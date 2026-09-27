@@ -1,0 +1,24 @@
+include <stdio.h>
+include <stdlib.h>
+include "curl/curl.h"
+
+int main() {
+    printf("Hello World!\n");
+
+    test1();
+
+    return 0;
+}
+void test1(){
+    CURL* curl=curl_easy_init();
+    if(!curl){
+        printf("curl_easy_int failed\n");
+        exit(0);    
+    }
+    curl_easy_setopt(curl,CURLOPT_URL,"https://cn.bing.com");
+    u32 res=curl_easy_perform(curl);
+    if(!res){
+        printf("curl_easy_perform failed with code %d\n",res);    
+    }
+    curl_easy_cleanup(curl);
+}

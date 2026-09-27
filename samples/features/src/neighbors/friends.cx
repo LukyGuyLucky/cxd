@@ -1,0 +1,11 @@
+include <stdio.h>
+
+void from_friends(){
+    printf("from src.neighbor.friends.from_friends()\n");    
+}
+
+struct Friends{
+    static void friendsHelper(){
+        printf("from src.neighbor.friends struct Friend static friendHelper()\n");    
+    }    
+}

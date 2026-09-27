@@ -1,0 +1,43 @@
+include <stdio.h>
+include "sqlite3.h"
+
+
+void test_sqlite3(){ 
+    printf("\n\ntest_sqlite3()---\n");
+    printf("sqlite3_libversion()=%s\n\n",sqlite3_libversion());
+    
+    sqlite3* db;
+    char* err_msg=0;
+
+    int rc=sqlite3_open("world.db3",&db);
+    defer sqlite3_close(db);
+
+    if(rc!=SQLITE_OK){
+        fprintf(stderr,"Cannot open database: %s\n",sqlite3_errmsg(db));
+        return;    
+    }
+    char* sql="select * from city";
+
+    rc=sqlite3_exec(db,sql,callback,0,&err_msg);
+
+    if(rc!=SQLITE_OK){
+        fprintf(stderr,"Failed to select data\n");
+        fprintf(stderr,"SQL error: %s]n",err_msg);
+        
+        sqlite3_free(err_msg);
+
+        return;
+    }
+    return;
+}
+
+int callback(void* notUsed,int argc,char** argv,char** azColName){
+    notUsed=0;
+    for(int i=0;i<argc;i++){
+        printf("%s = %s\n",azColName[i],argv[i] ? argv[i] : "NULL");    
+    }    
+    printf("\n");
+
+    return 0;
+}
+

@@ -1,0 +1,197 @@
+
+include <stdio.h>
+include <string.h>
+include <windows.h>
+include <iostream>
+include <string>
+include <vector>
+import std.string;
+
+include "uconsole.h"
+
+import subs;
+import sons.kids;
+import neighbors.friends;
+
+import "../learning/cxpack/ex/features/sql/sqlite3demo.cx";
+import "../learning/cxpack/ex/features/outers/outer.cx";
+
+__raw{using namespace std;}
+
+int main() {
+    printf("Hello World!\n");
+
+    features();
+
+    return 0;
+}
+
+void features(){
+    test_sqlite3();
+
+    printf("\n====="
+            "asm fast add"
+            " ====\n");
+    printf("fast_add(10,20)=%u\n\n",fast_add(10,20));    
+
+    printf("count_leading_zeros(7)=%u\n\n",count_leading_zeros(7));
+
+
+    MessageBoxW(NULL,L("Hello, world! \
+        ¡Hola Mundo! \
+        Γειά σου Κόσμε! \
+        Привет, мир! \
+        こんにちは世界！ \
+        你好世界！ \
+        नमस्ते दुनिया! \
+        👋🌎!"),
+        L("नमस्ते दुनिया!"),
+    0);
+
+    const char* greetings="Γειά σου Κόσμε!";
+    const char* getback=null;
+    defer free(getback);
+
+    int cppVal;
+    void* vecPtr;
+    __raw{
+        cppVal=42;
+        cout<<greetings<<"\ncppVal:"<<cppVal<<endl;
+        auto cppStr=new std::string(greetings);
+        getback=cppStr->c_str();
+        auto* vec=new std::vector<int>{1,2,3};
+        vecPtr=vec;
+    }
+    __raw{
+        // auto* vec will conflict with the one in the above __raw block
+        // that is,vec is still available here ?!
+        auto* vecBack=static_cast<std::vector<int>*>(vecPtr);
+        for(int x:*vecBack)
+            printf("vec->vecPtr->vec\t%d\n",x);
+    }
+    printf("\n\n");
+
+    // 跨语言交互边界观察：
+    // vecPtr 指向 std::vector<int> 对象本身，不是它的数据数组。
+    // ((int*)vecPtr)[i] 读到的是 vector 的内部字段（_M_start 等），不是元素。
+    // 正确方式：在 __raw 里用 static_cast<std::vector<int>*> 访问。
+    for(int i=0;i<3;i++){
+        printf("#i:(int*)vecPtr[%d]\t%d\n",((int*)vecPtr)[i]);
+    }
+
+    __raw{
+        delete static_cast<std::vector<int>*>(vecPtr);
+    }
+    printf("\ncppVal=%d\n\n",cppVal);
+    printf("getback=%s\n\n",getback);
+    const double PI=3.1415926;
+    
+    Switches on_off=.Off;
+    Book live=.new();
+    Book seagull=.{title="Seagull",author="Gaoming",published=2016};
+
+
+    String name=.from("Fernado");
+    String s2 = .from("world");
+    printf("on_off ? %s\n\n",on_off ? "Off":"Not-off");
+
+    char* desc1=live.description();
+    defer free(desc1);
+    printf(desc1);
+
+    char* desc2=seagull.description();
+    defer free(desc2);
+    printf(desc2);
+
+    u32[] p1=[2,4,10];
+    u32[] p2=[1,10,2];
+    printf("product: %u\n\n",product_array(p1,p2,3));
+
+    int[] arr1=[3];
+    int[3] arr2=[3,10,2];
+    int[] arr3={4};
+    printf("arr1[0]+arr2[0]*arr2[1]*arr2[2]+arr3[0]=%d\n\n",
+        arr1[0]+arr2[0]*arr2[1]*arr2[2]+arr3[0]
+    );
+    int[2][2][1] arr2x2x1=[[60],[7]];
+    printf("result=%d\n\n",arr2x2x1[0][0][0]+arr2x2x1[0][0][1]);
+
+    /*  todo: --gcc 模式ok, --cpp模式有bug待修复
+    Foo f=.{
+        bar=.{foo.i=67}
+    };
+    */
+    Foo f;
+    f.bar.foo.i=67;
+    printf("f.bar.foo.i=%d\n\n",f.bar.foo.i);
+
+    // modular test
+    from_subs();
+    Subs.subsHelper();
+
+    from_friends();
+    Friends.friendsHelper();
+
+    from_kids();
+    Kids.kidsHelper();
+
+    from_outers();
+    Outers.outersHelper();
+}
+
+u32 fast_add(u32 a, u32 b) {
+    u32 result;
+      __raw {
+        __asm__ __volatile__(
+            "addl %%ebx, %%eax"
+            : "=a" (result)
+            : "a" (a), "b" (b)
+        );
+    }
+    return result;
+}
+
+u32 count_leading_zeros(u32 x)=> __builtin_clz(x);
+
+u32 product_array(u32* restrict a,u32* restrict b,u32 n){
+    u32 total=1;
+    for(u32 i=0;i<n;i++){
+        total*=a[i]*b[i];    
+    }    
+    return total;
+}
+
+struct Bar{
+    union foo{
+        int i;    
+    }    
+}
+struct Foo{
+    Bar bar;    
+}
+enum Switches{
+    On,
+    Off,
+    WAITING    
+}
+struct Book{
+    char* title;
+    char* author;
+    u32 published;
+
+    static Book new()=>.{"Live","Liwes",2006};
+
+    char* description(){
+        char* result=malloc(512);
+        sprintf(result,
+            "Title:\t%s\n"
+            "Author:\t%s\n"
+            "Pushlished:\t%d\n\n",
+            self.title,self.author,self.published
+        );    
+        return result;
+    }
+}
+
+
+

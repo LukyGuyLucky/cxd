@@ -1,0 +1,16 @@
+
+include <stdio.h>
+import sons.kids;
+
+void from_subs(){
+    printf("fromSubs() inside the same folder with main.cx\n");    
+}
+struct Subs{
+    static void subsHelper(){
+        printf("from subs.cx struct Subs static subHelper()\n");    
+        printf("from subs.cx struct Subs static subHelper() "
+            "call features.src.sons.k.cx Struct Kids static kidsHelper()\n");
+        Kids.kidsHelper();
+    }    
+}
+

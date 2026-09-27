@@ -1,0 +1,17 @@
+include <stdio.h>
+import "../learning/cxpack/ex/features/outers/others.cx";
+import "../learning/cxpack/ex/features/src/neighbors/friends.cx";
+
+void from_outers(){
+    printf("from features.outers.outer.from_outer()\n");    
+}
+
+struct Outers{
+    static void outersHelper(){
+        printf("from features.outers.outer struct Outers static outerHelper()\n");   
+        printf("from features.outers.outer struct Outeres static outerHelper"
+            " call features.outers.others struct Others static OthersHelper()\n");
+        Others.othersHelper();
+        Friends.friendsHelper();
+    }    
+}

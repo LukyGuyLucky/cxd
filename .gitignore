@@ -12,5 +12,9 @@ harpy
 *.a
 *.db3
 demo*.cx
-features/
-testrun/
+/features/
+/testrun/target/ 
+*.lib 
+*.dll 
+*.xlsx 
+*.res 

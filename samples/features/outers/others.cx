@@ -1,0 +1,11 @@
+include <stdio.h>
+
+void from_others(){
+    printf("from features.outers.others.from_others()\n");    
+}
+
+struct Others{
+    static void othersHelper(){
+        printf("from features.outers.others struct Others static othersHeper()\n");    
+    }    
+}

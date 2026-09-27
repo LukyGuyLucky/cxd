@@ -1,0 +1,40 @@
+include "raylib.h"
+
+struct Color {
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+}
+
+const Color green=.{r=0,g=255,b=0,a=255};
+int main(){
+    test1();
+
+    return 0;
+}
+void test1(){
+    
+    const int screenWidth = 800;
+    const int screenHeight = 450;
+
+    InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
+
+    SetTargetFPS(60);
+    
+    while (!WindowShouldClose())    
+    {    
+        BeginDrawing();
+
+            ClearBackground(RAYWHITE);
+
+            DrawText("Congrats! You created your first window!", 190, 200, 20, green);  
+            DrawText("hello, Cx :)",120,100,60,DARKBROWN);
+            DrawText("Cx",50,200,210,RED);
+            DrawText("  Raylib",280,240,100,ORANGE);
+        EndDrawing();
+        
+    }
+
+    CloseWindow();       
+}

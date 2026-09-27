@@ -1,0 +1,76 @@
+import std.io;
+include <cfltk2/cfl.h> // Fl_init_all, Fl_lock, Fl_run
+include <cfltk2/cfl_box.h>
+include <cfltk2/cfl_button.h>
+include <cfltk2/cfl_enums.h>
+include <cfltk2/cfl_draw.h>
+include <cfltk2/cfl_group.h>
+include <cfltk2/cfl_image.h> // Fl_register_images
+include <cfltk2/cfl_widget.h>
+include <cfltk2/cfl_window.h>
+
+
+const char* en = "english: The quick brown fox jumps over the lazy dog.";
+const char* de = "german: Zwölf Boxkämpfer jagten Eva quer über den Sylter Deich.";
+const char* ru = "russian: В чащах юга жил бы цитрус? Да, но фальшивый экземпляр!";
+const char* gr = "greek: Γαζέες καὶ μυρτιὲς δὲν θὰ βρῶ πιὰ στὸ χρυσαφὶ ξέφωτο";
+const char* fr = "french: Le cœur déçu mais l'âme plutôt naïve, Louÿs rêva de crapaüter ....";
+const char* tk = "turkish: Pijamalı hasta, yağız şoföre çabucak güvendi.";
+const char* multi="¡Hola Mundo!Γειά σου Κόσμε!Привет, мир!こんにちは世界！你好世界！नमस्ते दुनिया!👋🌎!";
+
+
+
+int main() {
+    printf("¡Hola Mundo!Γειά σου Κόσμε!Привет, мир!こんにちは世界！你好世界！नमस्ते दुनिया!👋🌎!\n");
+
+    test3();
+
+    return 0;
+}
+void test1(){
+    Fl_init_all();
+    Fl_register_images();
+    Fl_lock();
+    Fl_Window* win=Fl_Window_new(100,100,400,300,"नमस्ते दुनिया!👋🌎!");
+    Fl_Button* btn=Fl_Button_new(160,210,180,40,"(&C)点击我!");
+    Fl_Window_end(win);
+    Fl_Window_show(win);
+    Fl_Button_set_callback(btn,cb,NULL);
+    
+    Fl_run();
+}
+void cb(Fl_Widget* w ,void* data){
+    Fl_Widget_set_label(w,"नमस्ते दुनिया!👋🌎!");    
+}
+
+void test2(){
+    Fl_register_images();
+    Fl_Window* win=Fl_Window_new(100,100,400,300,"नमस्ते दुनिया!👋🌎!");
+    Fl_Box* box=Fl_Box_new(0,0,400,300,NULL);
+    Fl_Window_end(win);
+    Fl_Window_show(win);
+    Fl_Window_set_color(win,Fl_Color_White);
+    Fl_PNG_Image* img=Fl_PNG_Image_new("img.png");
+    Fl_PNG_Image_scale(img,400,300,true,false);
+    Fl_Box_set_image(box,img);
+    
+    Fl_run();
+}
+struct Fl_Widget{}
+void test3(){
+    Fl_Window* win=Fl_Window_new(100,100,640,300,"नमस्ते दुनिया!👋🌎!");
+        u32 h=Fl_Widget_height((Fl_Widget*)win)/7;
+        u32 w=Fl_Widget_width((void*)win);
+        Fl_Box_new(0,h*0,w,h,en);
+        Fl_Box_new(0,h*1,w,h,de);
+        Fl_Box_new(0,h*2,w,h,ru);
+        Fl_Box_new(0,h*3,w,h,gr);
+        Fl_Box_new(0,h*4,w,h,fr);
+        Fl_Box_new(0,h*5,w,h,tk);
+        Fl_Box_new(0,h*6,w,h,multi);
+    
+    Fl_Window_end(win);
+    Fl_Window_show(win);
+
+    Fl_run();
+}

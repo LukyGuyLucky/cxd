@@ -1,0 +1,19 @@
+
+include <stdio.h>
+import neighbors.friends;
+
+void from_kids(){
+    printf("from src.sons.kids.from_kids()\n");    
+}
+
+struct Kids{
+    static void kidsHelper(){
+        printf("from src.sons.kids struct Kids static kidsHelper()\n");    
+        printf("from src/sons/kids struct Kids static KidsHelper()"
+            " call src/neighbors.friends struct Friends static friendsHelper()\n");
+        Friends.friendsHelper();
+    }    
+}
+
+
+
