@@ -1,0 +1,19 @@
+
+include <stdio.h>
+include "cmisc.h"
+
+int main() {
+    test_cmacros();
+	
+    return 0;
+}
+
+void test_cmacros() {
+    printf("Hello C macros.\n");
+	cx_log(42,336);
+	printf("area of circle(12.3) is %.3f\n",circle_area(12.3));
+	printf("the bigger area of the two circle "
+		" circle(3.3) vs circle(4.4) is %.3f\n",
+		cx_max(circle_area(3.3),circle_area(4.4)));
+	printf("cx_max(1,2)+3=%d\n",cx_max(1,2)+3);
+}
