@@ -1,4 +1,4 @@
-module frontend.import_resolver;
+﻿module frontend.import_resolver;
 
 import frontend;
 import utils;
@@ -8,7 +8,8 @@ import std.format;
 import std.array;
 import std.stdio;
 import std.file;
-import std.path;
+import std.path:absolutePath,buildNormalizedPath,extension,baseName;
+import std.string:toLower;
 
 struct ImportResolverContext
 {
@@ -48,16 +49,17 @@ public:
 
     Node[] importFile(string file, ImportStmt im, string mod, string file_, string path)
     {
-        if (string* m = file in context.mods)
-        {
-            // writeln(file);
-            // writeln(context.mods);
-            if (*m == mod)
-                err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
-            return (Node[]).init;
-        }
+        string canonical = buildNormalizedPath(absolutePath(file_)).toLower();
 
-        context.mods[file] = mod;
+		if (string* m = canonical in context.mods)
+		{
+			if (*m == mod)
+				err.error(im.pos, format("The module '%s' was imported twice by the same file '%s'.", file_, mod));
+			return (Node[]).init;
+		}
+
+		context.mods[canonical] = mod;
+		
         string content = readText(file_);
         Lexer l = new Lexer(file, path, content, err, registry);
         Token[] tokens = l.tokenizer();
