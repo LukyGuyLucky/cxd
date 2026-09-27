@@ -18,3 +18,4 @@ demo*.cx
 *.dll 
 *.xlsx 
 *.res 
+/testrun/ 
