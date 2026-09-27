@@ -1,4 +1,4 @@
-module frontend.lexer.lexer;
+﻿module frontend.lexer.lexer;
 
 import frontend.type_registry;
 import frontend.lexer.token;
@@ -84,7 +84,7 @@ private:
     {
         if (ch == '\r' && !isAtEnd())
         {
-            if (check('\n'))
+            if (!isAtEnd() && check('\n'))
             {
                 advance(); // pula \n
                 // o \r ja chegou com um advance()
@@ -223,35 +223,53 @@ private:
     }
 
     string lexString(uint start_o, uint start_l)
-    {
-        String buffer;
-        buffer.reserve(32);
-        
-        while (!isAtEnd() && !check('"'))
-        {
-            checkNewLine(peek());
-            buffer ~= [advance()];
-        }
-        
-        if (!match('"'))
-        {
-            err.error(getPos(start_o, start_l), "The string was not closed.");
-            return "/* err */";
-        }
+	{
+		String buffer;
+		buffer.reserve(32);
+		
+		while (!isAtEnd() && !check('"'))
+		{
+			char c = advance();
+			
+			if (c == '\\' && !isAtEnd())
+			{
+				buffer ~= [c];
+				buffer ~= [advance()];
+			}
+			else
+			{
+				checkNewLine(c);
+				buffer ~= [c];
+			}
+		}
 
-        /*
-        "Str1"
-        "Str2" "Str3"
-        */
+		if (isAtEnd() || !match('"'))
+		{
+			err.error(getPos(start_o, start_l), "The string was not closed.");
+			return "/* err */";
+		}
 
-        skipWhiteSpace();
-        string str = buffer.data;
-
-        if (match('"'))
-            return str ~= lexString(loffset, line);
-
-        return str;
-    }
+		// 处理相邻字符串拼接："a" "b" → "ab"
+		// 保存当前位置，以便没有相邻字符串时恢复
+		uint savedOffset = offset;
+		uint savedLoffset = loffset;
+		uint savedLine = line;
+		
+		skipWhiteSpace();
+		
+		if (!isAtEnd() && check('"'))
+		{
+			advance();  // 消费第二个字符串的开头引号
+			return buffer.data ~ lexString(loffset, line);
+		}
+		
+		// 没有相邻字符串，恢复位置
+		offset = savedOffset;
+		loffset = savedLoffset;
+		line = savedLine;
+		
+		return buffer.data;
+	}
 
     pragma(inline, true)
     void skipWhiteSpace()
@@ -576,12 +594,13 @@ public:
             }
 
             if (ch == '"')
-            {
-                uint start_o = loffset;
-                uint start_l = line;
-                pushToken(Token.tk_string(TokenKind.String, lexString(start_o, start_l), getPos(start_o, start_l)));
-                continue;
-            }
+			{
+				uint start_o = loffset;
+				uint start_l = line;
+				string s = lexString(start_o, start_l);
+				pushToken(Token.tk_string(TokenKind.String, s, getPos(start_o, start_l)));
+				continue;
+			}
 
             if (ch == '\'')
             {
@@ -600,12 +619,29 @@ public:
             TokenKind k = TokenKind.Eof;
             uint size;
 
-            if ([ch, peek()] == "//")
+            if (!isAtEnd() && [ch, peek()] == "//")
             {
                 while (!isAtEnd() && !check('\n'))
                     advance();
                 continue;
             }
+            
+            // 块注释 /* ... */
+			if (!isAtEnd(1) && ch == '/' && peek() == '*')
+			{
+				advance();   // 跳过 '*'
+				while (!isAtEnd())
+				{
+					if (peek() == '*' && !isAtEnd(1) && future(1) == '/')
+					{
+						advance();  // 跳过 '*'
+						advance();  // 跳过 '/'
+						break;
+					}
+					advance();
+				}
+				continue;
+			}
 
             if (!isAtEnd(1))
                 if (TokenKind* kk = [ch, peek(), future(1)] in symbols)
@@ -617,13 +653,16 @@ public:
                     goto end;
                 }
             
-            if (TokenKind* kk = [ch, peek()] in symbols)
-            {
-                k = *kk;
-                advance();
-                size++;
-                goto end;
-            }
+            if (!isAtEnd())
+			{
+				if (TokenKind* kk = [ch, peek()] in symbols)
+				{
+					k = *kk;
+					advance();
+					size++;
+					goto end;
+				}
+			}
             
             if (TokenKind* kk = [ch] in symbols)
             {
