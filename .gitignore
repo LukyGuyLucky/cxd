@@ -6,3 +6,11 @@ harpy
 *.bin
 *.img
 *.out
+.dub/
+*.exe
+*.cpp
+*.a
+*.db3
+demo*.cx
+features/
+testrun/
