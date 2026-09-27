@@ -19,3 +19,5 @@ demo*.cx
 *.xlsx 
 *.res 
 /testrun/ 
+/release/ 
+target/ 
