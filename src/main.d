@@ -18,6 +18,7 @@ import std.format;
 import std.getopt;
 import std.array;
 import std.file;
+import std.string:startsWith;
 
 __gshared Generic generic;
 __gshared bool noHeader;
@@ -53,7 +54,7 @@ void showHelp()
 	writeln("Commands:");
 	writeln("        update          Update your compiler to the latest version.");
 	writeln("        compile         Compile your Cx project.");
-	writeln("        build           Create your Cx project.");
+	writeln("        init            Create your Cx project.");
 	writeln("        run             Compile and execute your Cx project.");
 	writeln();
 	writeln("Options:");
@@ -78,7 +79,7 @@ void showHelp()
 	writeln();
 	writeln("Examples:");
 	writeln("  cx update");
-	writeln("  cx build");
+	writeln("  cx init");
 	writeln("  cx run");
 	writeln("  cx compile");
 	writeln();
@@ -187,13 +188,16 @@ int compile(string filename, ref CXArgs args)
 	}
 
 	string c_compiler = environment.get("CC", comp);
-	string command = format("%s %s %s %s -o %s %s %s",
+	string cppLib = args.cpp ? "-lstdc++ -fpermissive" : "";
+	
+	string command = format("%s %s %s %s -o %s %s %s %s",
 		c_compiler,
 		filec,
 		!args.stackTrace ? "-DCX_NO_TRACE" : "",
 		(args.opt ? "-O2" : ""),
 		args.output,
 		args.link.length > 0 ? (args.link.map!(l => format("-l%s", l).array).join(" ")) : "",
+		cppLib,
 		args.cflags.join(" "));
 	
 	if (args.dbg)
@@ -265,12 +269,29 @@ int main(string[] argv)
 	if (isCommand(argv, "update"))
 		return runUpdate();
 
-	if (isCommand(argv, "build"))
+	if (isCommand(argv, "init"))
 		return runBuild();
 
 	bool isRun = isCommand(argv, "run");
 	if (isCommand(argv, "compile") || isRun)
+	{
+		if (argv.canFind("--debug") || argv.canFind("-d"))
+			args.dbg = true;
+		foreach (i, arg; argv)
+		{
+			if (arg == "--cflags" && i + 1 < argv.length)
+				args.cflags ~= argv[i + 1];
+			else if (arg.startsWith("--cflags="))
+				args.cflags ~= arg["--cflags=".length .. $];
+		}
+		if (argv.canFind("--cpp"))
+			args.cpp = true;
+		if (argv.canFind("--gcc"))
+			args.gcc = true;
+		if (argv.canFind("--opt"))
+			args.opt = true;
 		return runCompile(isRun, args);
+	}
 
 	try
 		getopt(argv,

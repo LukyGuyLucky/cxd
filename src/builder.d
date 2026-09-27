@@ -106,9 +106,18 @@ int runCompile(bool isRun, ref CXArgs args)
 	int _ = compile(main, args);
 	if (!isRun) return _;
 
-	cx_enforce(exists(binary), "An error occurred while compiling the project.");
-	auto exec = executeShell("./" ~ binary);
+	
+	
+	//auto exec = executeShell("./" ~ binary);
+	version (Windows)
+		string execPath = binary ~ ".exe";
+	else
+		string execPath = "./" ~ binary;
+	
+	cx_enforce(exists(execPath), "An error occurred while compiling the project.");
+	
+	auto exec = executeShell(execPath);
 	dwrite(exec.output);
-
 	return exec.status;
+	
 }
