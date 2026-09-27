@@ -104,6 +104,7 @@ int runCompile(bool isRun, ref CXArgs args)
     args.output = binary;
 
 	int _ = compile(main, args);
+	if (_ != 0) return _;
 	if (!isRun) return _;
 
 	

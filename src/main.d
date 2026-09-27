@@ -187,7 +187,17 @@ int compile(string filename, ref CXArgs args)
 		}
 	}
 
-	string c_compiler = environment.get("CC", comp);
+	//string c_compiler = environment.get("CC", comp);
+	string c_compiler;
+	if (args.cpp)
+	{
+		c_compiler = which("g++") ? "g++" : (which("clang++") ? "clang++" : environment.get("CC", "g++"));
+	}
+	else
+	{
+		c_compiler = environment.get("CC", comp);
+	}
+	
 	string cppLib = args.cpp ? "-lstdc++ -fpermissive" : "";
 	
 	string command = format("%s %s %s %s -o %s %s %s %s",
