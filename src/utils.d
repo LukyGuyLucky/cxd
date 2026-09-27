@@ -35,7 +35,7 @@ string ext(string file)
 string clearNameMangling(string name)
 {
     string buff;
-    for (ulong i; i < name.length; i++)
+    for (size_t i; i < name.length; i++)
         if (name[i] == '*')
             buff ~= 'P';
         else

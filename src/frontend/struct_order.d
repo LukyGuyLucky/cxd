@@ -1,4 +1,4 @@
-module frontend.struct_order;
+﻿module frontend.struct_order;
 
 import frontend;
 
@@ -304,7 +304,7 @@ public:
         // originais. slots já está em ordem crescente (foi construído
         // percorrendo program.body de 0 em diante), então basta mapear
         // order[k] -> slots[k].
-        for (ulong i; i < order.length; i++)
+        for (size_t i; i < order.length; i++)
             program.body[slots[i]] = nodes[order[i]];
     }
 }

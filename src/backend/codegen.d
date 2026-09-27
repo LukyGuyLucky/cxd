@@ -1,4 +1,4 @@
-module backend.codegen;
+﻿module backend.codegen;
 
 import backend.cx_builtins;
 import frontend;
@@ -44,7 +44,11 @@ private:
     string[] unionErrors;
     string[] protos;
     string[] source;
-
+	
+	
+	private:
+	bool isCpp;
+	
     string indent(string target, uint ind)
     {
         string c;
@@ -175,7 +179,7 @@ private:
     string compileUnionDecl(UnionDecl node, uint ind, bool anon = false)
     {
         string name = node.name;
-        if (!anon)
+        if (!anon && !isCpp)
             typedefs ~= format("typedef union %s %s;", name, name);
         string _data = format("union %s\n{\n", anon ? "" : name);
         foreach (string field, TypeExpr type; node.fields)
@@ -189,24 +193,25 @@ private:
     void compileEnumDecl(EnumDecl node, uint ind)
     {
         string name = node.name;
-        string _data = format("enum %s\n{\n", name);
-        /*
-        const char* ArrayError_ids[] = {
-            [ArrayError_NotFound] = "NotFound"
-        };
-        */
-        string ids = format("const char* %s_ids[] = {\n", name);
-        foreach (string field; node.fields)
-        {
-            string namem = format("%s_%s", name, field);
-            _data ~= indent(namem ~ ",\n", ind + 4);
-            ids ~= indent(format("[%s] = \"%s\",\n", namem, field), 4);
-        }
-        ids ~= "};\n";
-        _data ~= "};\n";
-        data ~= _data;
-        data ~= format("typedef enum %s %s;", name, name);
-        data ~= ids;
+    string _data = format("enum %s\n{\n", name);
+		/*
+		const char* ArrayError_ids[] = {
+			[ArrayError_NotFound] = "NotFound"
+		};
+		*/
+		string ids = format("const char* %s_ids[] = {\n", name);
+		foreach (string field; node.fields)
+		{
+			string namem = format("%s_%s", name, field);
+			_data ~= indent(namem ~ ",\n", ind + 4);
+			ids ~= indent(format("[%s] = \"%s\",\n", namem, field), 4);
+		}
+		ids ~= "};\n";
+		_data ~= "};\n";
+		data ~= _data;
+		if (!isCpp)
+			data ~= format("typedef enum %s %s;", name, name);
+		data ~= ids;
     }
 
     string compileStmt(Node node, uint ind)
@@ -523,7 +528,7 @@ private:
             bool haveComptimeArray;
             string[] values;
             
-            for (ulong i; i < strc.values.length; i++)
+            for (uint i; i < strc.values.length; i++)
             {
                 Node n = strc.values[i];
                 if (n.type_expr !is null && n.type_expr.kind == TypeExprKind.Array)
@@ -584,7 +589,7 @@ private:
         case NodeKind.ArrayLit:
             ArrayLit arr = cast(ArrayLit) node;
             string values;
-            for (ulong i; i < arr.values.length; i++)
+            for (uint i; i < arr.values.length; i++)
             {
                 values ~= compileExpr(arr.values[i]);
                 if ((i + 1) < arr.values.length)
@@ -799,7 +804,7 @@ private:
         string args = fromMethod ? var : "";
         if (node.args.length > 0 && fromMethod)
             args ~= ", ";
-        for (ulong i; i < node.args.length; i++)
+        for (uint i; i < node.args.length; i++)
         {
             Node arg = node.args[i];
             string val = compileExpr(arg);
@@ -889,7 +894,8 @@ private:
         TypeExpr t = *types.get(name);
         TypeExpr a = actualType;
         actualType = t;
-        typedefs ~= format("typedef struct %s %s;", name, name);
+        if (!isCpp)
+			typedefs ~= format("typedef struct %s %s;", name, name);
         string _data = format("struct %s {\n", name);
         // emit(format("struct %s {", name), ind);
         foreach (VarDecl var; node.fields)
@@ -914,7 +920,7 @@ private:
             args ~= format("%s* self", methodType);
         if (fn.args.length > 0 && isMethod && hasSelf)
             args ~= ", ";
-        for (ulong i; i < fn.args.length; i++)
+        for (uint i; i < fn.args.length; i++)
         {
             FnArg arg = fn.args[i];
             args ~= format("%s", arg.type_expr.toStrVar(arg.name));
@@ -1031,6 +1037,12 @@ public:
         this.resolver = resolver;
         this.haveStackTrace = haveStackTrace;
         this.checkNullPtr = checkNullPtr;
+        
+        this.isCpp=isCpp;
+        
+        if (isCpp)
+			cxHeader ~= "\n#define restrict __restrict__\n";
+        
         if (noHeader) return;
         cxHeader ~= `
 #ifndef __CLANG_STDINT_H

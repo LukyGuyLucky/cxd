@@ -100,7 +100,10 @@ void showVersion()
 
 bool which(string c)
 {
-	return executeShell(format("which %s", c)).status == 0;
+    version(Windows)
+        return executeShell(format("where %s >nul 2>nul", c)).status == 0;
+    else
+        return executeShell(format("which %s", c)).status == 0;
 }
 
 int compile(string filename, ref CXArgs args)
@@ -213,13 +216,14 @@ int compile(string filename, ref CXArgs args)
 
 int main(string[] argv)
 {
+	/*
 	version (Windows)
 	{
 		writeln(
 			"The compiler does not yet support Windows, even though there is a build script and you managed to compile it.");
 		return 1;
 	}
-
+	*/
 	CXArgs args;
 	
 	version (OSX)
@@ -228,6 +232,8 @@ int main(string[] argv)
 	    OS = "linux";
 	else version (Posix)
 	    OS = "unix";
+	else version (Windows)
+		OS = "windows";
 	else
 	    OS = "unknown";
 
@@ -238,14 +244,21 @@ int main(string[] argv)
 		return 0;
 	}
 
-	string home = environment.get("HOME", "");
-	stdDir = home ~ "/" ~ ".cx/";
-	if (!home || !exists(stdDir))
+	version (Windows)
+	{
+		string home = thisExePath().dirName();
+		stdDir = home ~ "/";
+	}
+	else
+	{
+		string home = environment.get("HOME", "");
+		stdDir = home ~ "/" ~ ".cx/";
+	}
+
+	if (!exists(stdDir))
 	{
 		writefln("An error occurred while validating the compiler installation.");
-		writefln("Some folders may be missing; check if this path is valid: '%s'.", stdDir);
-		writefln(
-			"If it does not exist, then an error occurred while installing the compiler on your system.");
+		// ...
 		return 0;
 	}
 

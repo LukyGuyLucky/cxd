@@ -1,4 +1,4 @@
-// tipo sintatico
+﻿// tipo sintatico
 module frontend.type_expr;
 
 import frontend.lexer : Position;
@@ -344,7 +344,7 @@ class TypeExprFunction : TypeExpr
     override string toStrVar(string var = "") const
     {
         string _;
-        for (ulong i; i < args.length; i++)
+        for (size_t i; i < args.length; i++)
         {
             _ ~= args[i].toStrVar();
             if ((i + 1) < args.length)
