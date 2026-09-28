@@ -834,9 +834,12 @@ private:
         string call = format("%s(%s)", clearNameMangling(callee), args);
         
         // special case
-        if (callee == CXPanic)
-            return format(`%s(%s, "%s", %d)`, CXPanic, args, node.pos.filename, node.pos.start.line);
-        
+        //if (callee == CXPanic)
+		//	return format(`%s(%s, "%s", %d)`, CXPanic, args, node.pos.filename, node.pos.start.line);
+		
+        if (callee == CXPanic || callee == CXPanicAlias)
+			return format(`%s(%s, "%s", %d)`, CXPanic, args, node.pos.filename, node.pos.start.line);
+			
         return haveStackTrace ? format(`%s("%s", %s, %d, "%s")`, 
             isStmt ? CXCallVoid : CXCall, callee, call, 
                 node.pos.start.line, node.pos.filename) : call;
