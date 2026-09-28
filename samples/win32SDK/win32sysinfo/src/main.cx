@@ -16,6 +16,9 @@ include "cmisc.h"
 
 const u32 MAX_LEN=1024;
 const u32 bufsize=MAX_PATH; //100% c styled free name convention
+const int STR_EQUAL=0;
+
+
 
 int main(int argc,char*[] argv) {
     printf("Win32 Api demo\n");
@@ -31,7 +34,13 @@ int main(int argc,char*[] argv) {
     test_free_disk();
     test_cpu_speed();
     test_c_defines();
-    
+    test_ansic_functions();
+    test_security_enhanced();
+    test_winapi_string_length();
+    test_wstr_merge();
+    test_wstr_dup();
+    test_alias_wstr();
+
     return 0;
 }
 
@@ -208,4 +217,139 @@ void test_c_defines(){
                 "👋🌎!");
     MessageBoxW(NULL,msg,L("नमस्ते दुनिया!👋🌎!"),MB_OK|MB_ICONINFORMATION);
 }
+void test_ansic_functions(){
+    PWSTR str1=L("There are 15 pines");
+    wprintf(L("The length of the string is %lld characters\n"),wcslen(str1));    
 
+    wchar_t[20] buf;
+    wcscpy(buf,L("Wuthering"));
+    wcscat(buf,L("heights\n"));
+    wprintf(buf);
+
+    if(wcscmp(L("rain"),L("rainy"))==STR_EQUAL){
+        wprintf(L("rain and rainy are equal strings\n"));    
+    }else{
+        wprintf(L("rain and rainy are not equal strings\n"));    
+    }
+}
+void test_security_enhanced(){
+    PWSTR str1=L("There are 15 pines");
+    const int bufLen=50;
+    const int maxChars=50;
+    size_t count=wcsnlen_s(str1,maxChars);
+    
+    wprintf(L("The length of the string is %zu characters\n"),count);
+
+    wchar_t[bufLen] buf;
+    int r=wcscpy_s(buf,bufLen,L("Wuthering"));
+    if(r!=0){
+        wprintf(L("wcscpy_s() failed %ld\n"),r);    
+    }
+    r=wcscat_s(buf,bufLen,L("heights\n"));
+    if(r!=0){
+        wprintf(L("wcscat_s() failed %ld\n"),r);    
+    }
+    wprintf_s(buf);
+}
+void test_winapi_string_length(){
+    char* name="Jane";
+    wchar_t* town=L("Bratislava");
+    
+    wprintf(L("The length of the name string is %d\n"),lstrlenA(name));
+    wprintf(L("The town string length is %d\n"),lstrlenW(town));
+
+    wchar_t* s1=L("ZetCode, ");
+    wchar_t* s2=L("tutorials ");
+    wchar_t* s3=L("for ");
+    wchar_t* s4=L("programmers.\n");
+
+    wchar_t* s0=L("string");
+    wprintf(L("length of s0 is %ld\n"),lstrlenW(s0));
+
+    int len=lstrlenW(s1)+lstrlenW(s2)+lstrlenW(s3)+lstrlenW(s4)+1;
+    wchar_t[len] buf;
+
+    lstrcpyW(buf,s1);
+    lstrcatW(buf,s2);
+    lstrcatW(buf,s3);
+    lstrcatW(buf,s4);
+
+    wprintf(buf);
+
+    wchar_t[7] str5={'E','u','r','o','p','e','\0'};
+    CharLowerW(str5);
+    wprintf(L("str5 to lower: %ls\n"),str5);
+
+    CharUpperW(str5);
+    wprintf(L("str5 to upper: %ls\n"),str5);
+    wprintf(L("length of str5 is %ld\n"),lstrlenW(str5));
+
+    const wchar_t* cmp1=L("strong");
+    const wchar_t* cmp2=L("strong");
+    if(lstrcmpW(cmp1,cmp2)==STR_EQUAL){
+        wprintf(L("%ls and %ls are equal\n"),cmp1,cmp2);    
+    }else{
+        wprintf(L("%ls and %ls are not equal\n"),s1,s2);    
+    }
+    wprintf(L("When applying case insensitive comparision:\n"));
+    if(lstrcmpiW(cmp1,cmp2)==STR_EQUAL){
+        wprintf(L("%ls and %ls are equal\n"),cmp1,cmp2);    
+    }else{
+        wprintf(L("%ls and %ls are not equal\n"));    
+    }
+
+   
+    wprintf(L("cmp1==cmp2 result %ls\n"),cmp1==cmp2 ? L("equla"):L("Not equal"));    
+    wprintf(L("cmp1===cmp2 result %ls\n"),cmp1===cmp2 ? L("equla"):L("Not equal"));        
+
+    char* ccmp1="strong";
+    char* ccmp2="strong";
+    
+    wprintf(L("ccmp1==ccmp2 result %ls\n"),ccmp1==ccmp2 ? L("equla"):L("Not equal"));    
+    wprintf(L("ccmp1===ccmp2 result %ls\n"),ccmp1===ccmp2 ? L("equla"):L("Not equal"));        
+
+    
+}
+
+void test_wstr_merge() {
+    wprintf(L("test_wstr_merge()\n"));
+
+    const wchar_t* cmp1=0;
+    const wchar_t* cmp2=0;
+
+    __raw {
+        cmp1 = L"strong";
+        cmp2 = L"strong";
+    }
+
+    wprintf(L("cmp1 == cmp2: %ls\n"), cmp1 == cmp2 ? L("equal") : L("not equal"));
+    wprintf(L("cmp1 === cmp2: %ls\n"), cmp1 === cmp2 ? L("equal") : L("not equal"));
+
+    __raw {
+        wprintf(L("cmp1 addr: %p\n"), (void*)cmp1);
+        wprintf(L("cmp2 addr: %p\n"), (void*)cmp2);
+    }
+}
+void test_wstr_dup() {
+    wprintf(L("test_wstr_dup()\n"));
+
+    wchar_t[16] buf1;
+    wchar_t[16] buf2;
+
+    __raw {
+        wcscpy(buf1, L"strong");
+        wcscpy(buf2, L"strong");
+        wprintf(L("addr1: %p, addr2: %p\n"), (void*)buf1, (void*)buf2);
+    }
+
+    wprintf(L("buf1 == buf2: %ls\n"), buf1 == buf2 ? L("equal") : L("not equal"));
+    wprintf(L("buf1 === buf2: %ls\n"), buf1 === buf2 ? L("equal") : L("not equal"));
+}
+
+alias wstring = wchar_t*
+void test_alias_wstr() {
+    wprintf(L("\n\ntest_alias_wstr()\n"));
+    wstring a = L("strong");
+    wstring b = L("strong");
+    wprintf(L("a === b: %ls\n\n"), a === b ? L("equal") : L("not equal"));
+}
