@@ -480,7 +480,13 @@ private:
             if (binary.op == TokenKind.EEEquals)
             {
                 if (isString(binary.left.type_expr) && isString(binary.right.type_expr))
-                    return format("strcmp(%s, %s) == 0", left, right);
+				{
+					string cmp = "strcmp";
+					if (isWString(binary.left.type_expr) || isWString(binary.right.type_expr))
+						cmp = "wcscmp";
+					return format("%s(%s, %s) == 0", cmp, left, right);
+				}
+				
                 if (isStruct(binary.left.type_expr))
                 {
                     string name = binary.left.type_expr.toStr();
@@ -996,14 +1002,24 @@ private:
     }
 
     bool isString(TypeExpr type)
-    {
-        TypeExprNamed t;
-        if (TypeExprPointer p = cast(TypeExprPointer) type)
-            t = cast(TypeExprNamed) p.base;
-        else if (TypeExprArray a = cast(TypeExprArray) type)
-            t = cast(TypeExprNamed) a.base;
-        return t is null ? false : t.name == "char";
-    }
+	{
+		TypeExprNamed t;
+		if (TypeExprPointer p = cast(TypeExprPointer) type)
+			t = cast(TypeExprNamed) p.base;
+		else if (TypeExprArray a = cast(TypeExprArray) type)
+			t = cast(TypeExprNamed) a.base;
+		return t is null ? false : (t.name == "char" || t.name == "wchar_t");
+	}
+	
+	bool isWString(TypeExpr type)
+	{
+		TypeExprNamed t;
+		if (TypeExprPointer p = cast(TypeExprPointer) type)
+			t = cast(TypeExprNamed) p.base;
+		else if (TypeExprArray a = cast(TypeExprArray) type)
+			t = cast(TypeExprNamed) a.base;
+		return t is null ? false : t.name == "wchar_t";
+	}
 
     bool isResult(TypeExpr type)
     {
