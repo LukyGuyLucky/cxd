@@ -1,10 +1,13 @@
 
 include <stdio.h>
+include <assert.h>
+include <windows.h>
 include "cmisc.h"
 
 int main() {
     test_cmacros();
-	
+    test_c_defines();
+    
     return 0;
 }
 
@@ -16,4 +19,13 @@ void test_cmacros() {
 		" circle(3.3) vs circle(4.4) is %.3f\n",
 		cx_max(circle_area(3.3),circle_area(4.4)));
 	printf("cx_max(1,2)+3=%d\n",cx_max(1,2)+3);
+}
+
+void test_c_defines(){
+    MSG winmsg;
+    RECT rect;
+    PAINTSTRUCT paintStruct;
+    int x=10;
+    MessageBoxA(NULL,"Testing MB_OK and MB_ICONINFORMATION defines","win32 defines",MB_OK|MB_ICONINFORMATION);
+    assert(x==10);
 }

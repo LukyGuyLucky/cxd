@@ -1,0 +1,211 @@
+
+include <stdio.h>
+include <stdlib.h>
+include <windows.h>
+include <initguid.h>
+include <knownfolders.h>
+include <shlobj.h>
+include <wchar.h>
+include <Lmcons.h>
+include <io.h>
+include <fcntl.h>
+include <assert.h>
+
+include "uconsole.h"
+include "cmisc.h"
+
+const u32 MAX_LEN=1024;
+const u32 bufsize=MAX_PATH; //100% c styled free name convention
+
+int main(int argc,char*[] argv) {
+    printf("Win32 Api demo\n");
+     _setmode(_fileno(stdout),_O_U16TEXT);
+     
+    test_wmain(argc,argv);
+    test_sdk1();
+    test_username();
+    test_current_directory();
+    test_os_memory();
+    test_document_dir();
+    test_get_drivers();
+    test_free_disk();
+    test_cpu_speed();
+    test_c_defines();
+    
+    return 0;
+}
+
+int test_wmain(int argc,char*[] argv){
+    PDWORD cChars=NULL;
+    HANDLE std=GetStdHandle(STD_OUTPUT_HANDLE);
+    
+    if(std==INVALID_HANDLE_VALUE){
+        wprintf(L("Cannot retrieve standard output handle\n (%d)"),GetLastError());
+    }
+    if(!argv[1]) argv[1]="Welcome to Cx!";
+    if(argv[1]){
+	
+        DWORD written;
+	WriteConsoleW(std, L(argv[1]), wcslen(L(argv[1])), &written, NULL); 
+    }
+    //CloseHandle(std);
+
+    return 0;
+}
+void test_sdk1(){
+
+    HANDLE std=GetStdHandle(STD_OUTPUT_HANDLE);
+    //SetConsoleOutputCP(CP_UTF8);
+    wchar_t[1024] computerName;  
+    DWORD size=sizeof(computerName)/sizeof(computerName[0]);
+    
+    int r=GetComputerNameW(computerName,&size);
+    computerName[size]='\0';
+    if(r==0){
+        wprintf(L("Failed to get computer name %ld\n"),GetLastError());
+        return;    
+    }
+
+    wprintf(L("wide testΓειά σου Κόσμε!\n"));
+
+    wprintf(L("计算机名称：%ls\n"),computerName);
+
+    DWORD written;
+    WriteConsoleW(std,L("计算机名称："),6,&written,NULL);
+    WriteConsoleW(std,computerName,wcslen(computerName),&written,NULL);
+    WriteConsoleW(std,L("\n"),1,&written,NULL);
+}
+void test_username(){
+
+    wchar_t[MAX_LEN] username;
+    DWORD len=sizeof(username)/sizeof(wchar_t);
+    int r=GetUserNameW(username,&len);
+    if(r==0){
+        wprintf(L("Failed to get username %ld\n"),GetLastError());
+        return;    
+    }    
+    wprintf(L("User name: %ls\n"),username);
+}
+
+void test_current_directory(){
+    wchar_t[MAX_LEN] buf;    
+    DWORD r=SetCurrentDirectoryW(L("."));
+
+    if r==0{
+        wprintf(L("SetCurrentDirectoryW() failed (%ld)\n"),GetLastError());
+        return;    
+    }
+    r=GetCurrentDirectoryW(bufsize,buf);
+    if(r==0){
+        wprintf(L("GetCurrentDirectoryW() failed (%ld)\n"),GetLastError());
+        return;    
+    }
+    if(r>bufsize){
+        wprintf(L("Buffer too small,needs %d characters\n"),r);
+        return;    
+    }
+    wprintf(L("当前目录： %ls\n"),buf);
+}
+void test_os_memory(){
+    MEMORYSTATUSEX mem = {0};
+
+    mem.dwLength = sizeof(mem);
+
+    int r = GlobalMemoryStatusEx(&mem);
+
+    if (r == 0) {
+        wprintf(L("Failed to memory status %ld"), GetLastError());
+        return ;
+    }
+
+    wprintf(L("在用内存:\t%ld%%\n"), mem.dwMemoryLoad);
+	wprintf(L("总物理内存:\t%.3f GB\n"), (double)mem.ullTotalPhys / 1024/1024/1024);
+	wprintf(L("可用物理内存:\t%.3f GB\n"), (double)mem.ullAvailPhys / 1024/1024/1024);
+	wprintf(L("提交限制:\t%.3f GB\n"), (double)mem.ullTotalPageFile / 1024/1024/1024);
+	wprintf(L("可用提交:\t%.3f GB\n"), (double)mem.ullAvailPageFile / 1024/1024/1024);
+	wprintf(L("虚拟地址空间:\t%.3f TB\n"), (double)mem.ullTotalVirtual / 1024/1024/1024/1024);
+	}
+
+void test_document_dir(){
+
+    PWSTR path=NULL;
+    
+    HRESULT hr=SHGetKnownFolderPath(&FOLDERID_Documents,0,NULL,&path);
+    if(SUCCEEDED(hr)){
+        wprintf(L("%ls\n"),path);    
+    }
+    CoTaskMemFree(path);
+}
+void test_get_drivers(){
+
+    wchar_t[MAX_PATH] logicalDrivers={0};
+    DWORD r=GetLogicalDriveStringsW(MAX_PATH,logicalDrivers);
+    
+    if(r==0){
+        wprintf(L("Failed to get drive names %ld\n"),GetLastError());
+        return;    
+    }
+    if(r>0 && r<=MAX_PATH){
+        wchar_t* singleDriver=logicalDrivers;
+        while(*singleDriver){
+            wprintf(L("%ls\n"),singleDriver);
+            singleDriver+=wcslen(singleDriver)+1;    
+        }    
+    }
+}
+void test_free_disk(){
+    u64 freeCall,total,free;
+    int r=GetDiskFreeSpaceExW(L("c:\\"),(PULARGE_INTEGER)&freeCall,
+        (PULARGE_INTEGER)&total,(PULARGE_INTEGER)&free);
+    if(r==0){
+        wprintf(L("Failed to get free disk space %ld\n"),GetLastError());
+        return;    
+    }    
+    wprintf(L("可用空间：\t\t%I64u GB\n"),freeCall/(1024*1024*1024));
+    wprintf(L("总空间：\t\t%I64u GB\n"),total/(1024*1024*1024));
+    wprintf(L("空闲空间：\t\t%I64u GB\n"),free/(1024*1024*1024));
+}
+void test_cpu_speed(){
+    DWORD BufSize=MAX_PATH;
+    DWORD mhz=MAX_PATH;
+    HKEY key;
+    
+    long r=RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+        L("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"),
+        0,KEY_READ,&key);
+    if(r!=ERROR_SUCCESS){
+        wprintf(L("RegOpenKeyExW() failed %ld\n"),GetLastError());
+        return;    
+    }
+    r=RegQueryValueExW(key,L("~MHz"),NULL,NULL,(LPBYTE)&mhz,&BufSize);
+    if(r!=ERROR_SUCCESS){
+        wprintf(L("RegQueryValueExW() failed %ld\n"),GetLastError());
+        return;    
+    }
+    wprintf(L("CPU 速度：\t\t%lu MHz\n"),mhz);
+    r=RegCloseKey(key);
+    if(r!=ERROR_SUCCESS){
+        wprintf(L("Failed to close registry handler %ld\n"),GetLastError());
+        return;    
+    }
+}
+
+void test_c_defines(){
+    MSG winmsg;
+    RECT rect;
+    PAINTSTRUCT paintStruct;
+    int x=10;
+    assert(x==10);
+
+    cx_log(42,336);
+    LPWSTR msg=L("Hello, world!\n"
+                "¡Hola Mundo!\n"
+                "Γειά σου Κόσμε!\n"
+                "Привет, мир!\n"
+                "こんにちは世界！\n"
+                "你好世界！\n"
+                "नमस्ते दुनिया!\n"
+                "👋🌎!");
+    MessageBoxW(NULL,msg,L("नमस्ते दुनिया!👋🌎!"),MB_OK|MB_ICONINFORMATION);
+}
+

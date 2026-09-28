@@ -1,5 +1,12 @@
 __raw{
     #include <windows.h>
+    #include <stdio.h>
+
+    #define ID_BTN_ADD   101
+    #define ID_BTN_CLEAR 102
+    #define ID_EDIT      103
+    #define ID_LABEL     104
+    #define ID_TIMER     1
 
     LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -22,15 +29,16 @@ __raw{
         wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
 
         RegisterClassW(&wc);
-        hwnd = CreateWindowW(wc.lpszClassName, L"नमस्ते दुनिया!👋🌎!",
+
+        hwnd = CreateWindowW(wc.lpszClassName, L"Win32 API Demo",
                     WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                    100, 100, 350, 250, NULL, NULL, hInstance, NULL);
+                    100, 100, 500, 350, NULL, NULL, hInstance, NULL);
 
         ShowWindow(hwnd, nCmdShow);
         UpdateWindow(hwnd);
 
         while (GetMessage(&msg, NULL, 0, 0)) {
-
+            TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
@@ -42,10 +50,90 @@ __raw{
 
         switch(msg) {
 
-        case WM_DESTROY:
+        case WM_CREATE: {
+            /* 静态文本 */
+            CreateWindowW(L"STATIC", L"Input:",
+                WS_CHILD | WS_VISIBLE,
+                20, 20, 60, 25, hwnd, (HMENU)ID_LABEL, NULL, NULL);
 
+            /* 编辑框 */
+            CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+                WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL ,
+                80, 20, 200, 25, hwnd, (HMENU)ID_EDIT, NULL, NULL);
+
+            /* 按钮：加 */
+            CreateWindowW(L"BUTTON", L"Add 1",
+                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                300, 20, 80, 25, hwnd, (HMENU)ID_BTN_ADD, NULL, NULL);
+
+            /* 按钮：清空 */
+            CreateWindowW(L"BUTTON", L"Clear",
+                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                390, 20, 80, 25, hwnd, (HMENU)ID_BTN_CLEAR, NULL, NULL);
+
+            /* 定时器，500ms */
+            SetTimer(hwnd, ID_TIMER, 500, NULL);
+            return 0;
+        }
+
+        case WM_COMMAND: {
+            switch (LOWORD(wParam)) {
+
+            case ID_BTN_ADD: {
+                wchar_t buf[64] = {0};
+                GetWindowTextW(GetDlgItem(hwnd, ID_EDIT), buf, 64);
+                int val = _wtoi(buf);
+                val += 1;
+                _itow(val, buf, 10);
+                SetWindowTextW(GetDlgItem(hwnd, ID_EDIT), buf);
+                return 0;
+            }
+
+            case ID_BTN_CLEAR:
+                SetWindowTextW(GetDlgItem(hwnd, ID_EDIT), L"");
+                return 0;
+            }
+            return 0;
+        }
+
+        case WM_TIMER: {
+            /* 定时器：更新窗口标题 */
+            SYSTEMTIME st;
+            GetLocalTime(&st);
+            wchar_t title[64];
+            _snwprintf(title, 64, L"Win32 API Demo  %02d:%02d:%02d",
+                st.wHour, st.wMinute, st.wSecond);
+            SetWindowTextW(hwnd, title);
+            return 0;
+        }
+
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            rc.top = 60;
+
+            SetTextColor(hdc, RGB(0, 0, 128));
+            SetBkMode(hdc, TRANSPARENT);
+            DrawTextW(hdc, L"Hello, Win32!", -1, &rc,
+                DT_CENTER | DT_TOP | DT_SINGLELINE);
+
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+
+        case WM_SIZE: {
+            /* 窗口大小变化，重绘 */
+            InvalidateRect(hwnd, NULL, TRUE);
+            return 0;
+        }
+
+        case WM_DESTROY:
+            KillTimer(hwnd, ID_TIMER);
             PostQuitMessage(0);
-            break;
+            return 0;
         }
 
         return DefWindowProcW(hwnd, msg, wParam, lParam);

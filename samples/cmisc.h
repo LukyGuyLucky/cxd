@@ -19,4 +19,4 @@ extern "C"{
 }
 #endif
 
-#endif __CMISC__H__
+#endif //__CMISC__H__
