@@ -1,7 +1,11 @@
 
 include <stdio.h>
 include <stdlib.h>
+include <stdbool.h>
 include <windows.h>
+include <Shlwapi.h>
+include <strsafe.h>
+
 include <initguid.h>
 include <knownfolders.h>
 include <shlobj.h>
@@ -11,9 +15,10 @@ include <io.h>
 include <fcntl.h>
 include <assert.h>
 
-include "uconsole.h"
+include "uconsole.c"
 include "cmisc.h"
 
+__raw{#pragma comment(lib, "libShlwapi.a")}
 const u32 MAX_LEN=1024;
 const u32 bufsize=MAX_PATH; //100% c styled free name convention
 const int STR_EQUAL=0;
@@ -40,6 +45,13 @@ int main(int argc,char*[] argv) {
     test_wstr_merge();
     test_wstr_dup();
     test_alias_wstr();
+    test_string_fill_buffer();
+    test_string_types();
+    test_issues();
+    test_shell_convert();
+    test_shell_search();
+    test_safe_length();
+    test_safe_gets();
 
     return 0;
 }
@@ -348,8 +360,154 @@ void test_wstr_dup() {
 
 alias wstring = wchar_t*
 void test_alias_wstr() {
+    
     wprintf(L("\n\ntest_alias_wstr()\n"));
     wstring a = L("strong");
     wstring b = L("strong");
     wprintf(L("a === b: %ls\n\n"), a === b ? L("equal") : L("not equal"));
+}
+
+void test_string_fill_buffer(){
+    SYSTEMTIME st;
+    wchar_t[128] buf;
+    
+    GetLocalTime(&st);
+    wsprintfW(buf,L("Today is %lu.%lu.%lu\n"),st.wYear,st.wMonth,st.wDay);
+    wprintf(buf);
+}
+//alias wchar_t=ushort
+void test_string_types(){
+    wprintf(L("test_string_types()\n"));
+   
+    char[23] str1 = "7 white, 3 red roses.\n";
+    wchar_t[23] str2;
+    wcscpy(str2, L("7 white, 3 red roses.\n"));
+    wchar_t* str3 = L("7 white, 3 red roses.\n");
+    wcscpy(str3, L("7 white, 3 red roses.\n"));
+    
+    int alphas=0;
+    int digits=0;
+    int spaces=0;
+    int puncts=0;
+    int contrs=0;
+
+    int size=lstrlenW(str2);
+    WORD[size] types;
+    ZeroMemory(types,size);
+
+    bool rv=GetStringTypeW(CT_CTYPE1,str2,size,types);
+
+    if(!rv){
+        wprintf(L("Could not get character types (%ld)"),GetLastError());
+        return;    
+    }
+    for(int i=0;i<size;i++){
+        if(types[i] & C1_ALPHA) alphas++;
+        if(types[i] & C1_DIGIT) digits++;
+        if(types[i] & C1_SPACE) spaces++;
+        if(types[i] & C1_PUNCT) puncts++;
+        if(types[i] & C1_CNTRL) contrs++;
+    }
+    wprintf(L("Here are %ld letter(s),%ld ditit(s), "
+        "%ld space(s), %ld puctuation character(s), "
+        "and %ld control character(s)\n"),
+        alphas,digits,spaces,puncts,contrs);
+}
+
+void test_issues(){
+    test_issue1();
+    test_issue2();
+    test_issue3();
+    test_issue4();
+}
+void test_issue1(){
+    wprintf(L("test_issue1\n"));
+    wchar_t[23] str;
+}
+void test_issue2(){
+    wprintf(L("test_issue2\n"));
+    wchar_t[23] str;
+    wcscpy(str,L("7 white, 3 red roses.\n"));
+}
+void test_issue3(){
+    
+}
+void test_issue4(){
+    
+}
+void test_shell_convert(){
+    wchar_t* str1=L("512");
+    wchar_t* str2=L("0xAB12");
+    int n=0;
+
+    bool r=StrToIntExW(str1,STIF_DEFAULT,&n);
+
+    if(r){
+        wprintf(L("The value is %d\n"),n);    
+    }else{
+        wprintf(L("The first conversion failed\n"));
+        return;    
+    }
+    r=StrToIntExW(str2,STIF_SUPPORT_HEX,&n);
+
+    if(r){
+        wprintf(L("The value is %d\n"),n);    
+    }else{
+        wprintf(L("The second conversion failed\n"));    
+    }
+}
+void test_shell_search(){
+    wchar_t* buf=L("Today is a rainy day.");
+    wchar_t* search_word=L("rainy");
+    int len=wcslen(search_word);
+
+    LPWSTR pr=StrStrW(buf,search_word);
+
+    if(!pr){
+        wprintf(L("No match\n"),buf);    
+    }else{
+        wprintf(L("%.*ls is found\n"),len,pr);    
+    }
+}
+
+void test_safe_length(){
+    //wchar_t[8] str;
+    //wcscpy(str,L("ZetCode"));
+    //size_t size=sizeof(str);
+    // or below,changed a lot
+
+    wchar_t* str=L("ZetCode");
+    size_t target_size=0;
+    
+    size_t cbSize=(wcslen(str)+1)*sizeof(wchar_t);
+    size_t cchSize=wcslen(str)+1;
+
+    HRESULT r=StringCbLengthW(str,cbSize,&target_size);
+
+    if(SUCCEEDED(r)){
+        wprintf(L("The string has %lld bytes\n"),target_size);    
+    }else{
+        wprintf(L("StringCbLengthW() failed: 0x%08X\n"),r);
+        //return;    
+    }
+
+    r=StringCchLengthW(str,cchSize,&target_size);
+    if(SUCCEEDED(r)){
+        wprintf(L("The string has %lld characters\n"),target_size);    
+    }else{
+        wprintf(L("StringCchLengthW() failed: 0x%08X\n"));
+        //return;    
+    }
+}
+
+void test_safe_gets(){
+    wchar_t[MAX_LEN] buf;
+    wprintf(L("Please enter something:"));
+    HRESULT r=StringCchGetsW(buf,ARRAYSIZE(buf));
+
+    if(SUCCEEDED(r)){
+        wprintf(L("You have entered: %ls\n"),buf);    
+    }else{
+        wprintf(L("StringCchGets() failed\n"));    
+    }
 }

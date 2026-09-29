@@ -1,0 +1,101 @@
+include <windows.h>
+include <stdio.h>
+
+__raw{
+    #define IDM_FILE_NEW    1
+    #define IDM_FILE_OPEN  2
+    #define IDM_FILE_QUIT  3
+    #define IDM_VIEW_ZOOM  4
+    #define IDM_HELP_ABOUT 5
+
+    LRESULT CALLBACK WndProc(HWND,UINT,WPARAM,LPARAM);
+
+    int WINAPI wWinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,
+        PWSTR pcmdLine,int nCmdShow){
+        
+        MSG msg;
+        HWND hwnd;
+        WNDCLASSW wc;
+        
+        wc.style            =CS_HREDRAW|CS_VREDRAW;
+        wc.cbClsExtra       =0;
+        wc.cbWndExtra       =0;
+        wc.lpszClassName    =L"Menu";
+        wc.hInstance        =hInstance;
+        wc.hbrBackground    =GetSysColorBrush(COLOR_3DFACE);
+        wc.lpszMenuName     =NULL;
+        wc.lpfnWndProc      =WndProc;
+        wc.hCursor          =LoadCursor(NULL,IDC_ARROW);
+        wc.hIcon            =LoadIcon(NULL,IDI_APPLICATION);
+
+        RegisterClassW(&wc);
+
+        hwnd=CreateWindowW(wc.lpszClassName,L"Menu",
+            WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+            100, 100, 350, 250, NULL, NULL, hInstance, NULL);
+        
+        ShowWindow(hwnd,nCmdShow);
+        UpdateWindow(hwnd);
+
+        while(GetMessage(&msg,NULL,0,0)){
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);    
+        }
+
+        return (int)msg.wParam;
+    }
+    LRESULT CALLBACK WndProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam){
+        HMENU hMenu;
+        HMENU hFileMenu;
+        HMENU hViewMenu;
+        HMENU hHelpMenu;
+        
+        switch(msg){
+            case WM_CREATE:
+                hMenu           =CreateMenu();
+                hFileMenu       =CreateMenu();
+                hViewMenu       =CreateMenu();
+                hHelpMenu       =CreateMenu();
+                
+                AppendMenuW(hFileMenu,MF_STRING,IDM_FILE_NEW,L"&new");
+                AppendMenuW(hFileMenu,MF_STRING,IDM_FILE_OPEN,L"&Open");
+                AppendMenuW(hFileMenu, MF_SEPARATOR, 0, NULL);
+                AppendMenuW(hFileMenu, MF_STRING, IDM_FILE_QUIT, L"&Quit");
+
+                AppendMenuW(hViewMenu, MF_STRING, IDM_VIEW_ZOOM, L"&Zoom");
+
+                AppendMenuW(hHelpMenu, MF_STRING, IDM_HELP_ABOUT, L"&About");
+
+                AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hFileMenu,L"&File");
+                AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hViewMenu,L"&View");
+                AppendMenu(hMenu,MF_POPUP,(UINT_PTR)hHelpMenu,L"&Help");
+
+                SetMenu(hwnd,hMenu);
+                break;
+            case WM_COMMAND:
+                switch(LOWORD(wParam)){
+                    case IDM_FILE_NEW:
+                        MessageBoxW(hwnd,L"New file",L"File",MB_OK);
+                        break;
+                    case IDM_FILE_OPEN:
+                        MessageBoxW(hwnd,L"Open file",L"File",MB_OK);
+                        break;
+                    case IDM_FILE_QUIT:
+                        SendMessageW(hwnd,WM_CLOSE,0,0);
+                        break;
+                    case IDM_VIEW_ZOOM:
+                        MessageBoxW(hwnd,L"Zoom",L"View",MB_OK);
+                        break;
+                    case IDM_HELP_ABOUT:
+                        MessageBoxW(hwnd,L"About",L"Help",MB_OK|MB_ICONINFORMATION);
+                        break;
+                }
+                break;
+            case WM_DESTROY:
+                PostQuitMessage(0);
+                break;
+            }
+        return DefWindowProcW(hwnd,msg,wParam,lParam);
+    }
+}
+

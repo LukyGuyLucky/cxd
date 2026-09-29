@@ -1,22 +1,42 @@
 
 include <stdio.h>
+include <windows.h>
+include <wchar.h>
+include <strsafe.h>
+
+const int ID_HOTKEY=1;
+const int MAX_LEN=1024;
+const int IDM_FILE_NEW=1;// IDM_FILE_OPEN is in the raw_block
+const int IDM_FILE_QUIT=3;
+
 __raw{
     #ifndef UNICODE
     #define UNICODE
     #endif 
 
-    #include <windows.h>
+    #define IDM_FILE_OPEN 2
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    void CenterWindow(HWND);
+    void AddMenus(HWND);
+
+    //child window:
+    LRESULT CALLBACK PanelProc(HWND,UINT,WPARAM,LPARAM);
+    void RegisterRedPanelClass(void);
+    void RegisterBluePanelClass(void);
+    void CreateLabels(HWND);
+
+    HWND hwndSta1;
+    HWND hwndSta2;
 
     int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
     {
-        printf("from src/sons/kids struct Kids static KidsHelper()"
-            " call src/neighbors.friends struct Friends static friendsHelper()\n");
+        printf("turn on console output\n");
+
         // Register the window class.
         const wchar_t CLASS_NAME[]  = L"Sample Window Class";
         
-        WNDCLASS wc = { };
+        WNDCLASSW wc = {0 };
 
         wc.lpfnWndProc   = WindowProc;
         wc.hInstance     = hInstance;
@@ -29,45 +49,114 @@ __raw{
 
         // Create the window.
 
-        HWND hwnd = CreateWindowEx(
-            0,                              // Optional window styles.
-            CLASS_NAME,                     // Window class
-            L"Learn to Program Windowsनमस्ते दुनिया!👋🌎!",    // Window text
-            WS_OVERLAPPEDWINDOW,            // Window style
+        HWND hwnd = CreateWindowExW(
+            0,                                              // Optional window styles.
+            wc.lpszClassName,                               // Window class
+            L"Learn to Program Windowsनमस्ते दुनिया!👋🌎!",     // Window text
+            WS_OVERLAPPEDWINDOW|WS_VISIBLE,                 // Window style
 
             // Size and position
-            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+            CW_USEDEFAULT, CW_USEDEFAULT, 480 , 360 ,
 
-            NULL,       // Parent window    
-            NULL,       // Menu
-            hInstance,  // Instance handle
-            NULL        // Additional application data
-            );
+            0,                  // Parent window    
+            0,                  // Menu
+            hInstance,          // Instance handle
+            0                   // Additional application data
+        );
 
         if (hwnd == NULL)
         {
             return 0;
         }
 
-        ShowWindow(hwnd, nCmdShow);
+        //ShowWindow(hwnd, nCmdShow);
 
         // Run the message loop.
 
-        MSG msg = { };
+        MSG msg = {0 };
         while (GetMessage(&msg, NULL, 0, 0) > 0)
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        return 0;
+        return (int)msg.wParam;
     }
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
+        wchar_t buf[10];
+        RECT rect;
+
+        FLASHWINFO fwi;
+
         switch (uMsg)
         {
+        case WM_CREATE:
+            AddMenus(hwnd);
+            CreateWindowW(L"Button",L"Fla&sh",WS_CHILD|WS_VISIBLE,
+                30,30,80,25,hwnd,(HMENU)1,NULL,NULL);
+
+            CreateLabels(hwnd);
+
+            RegisterHotKey(hwnd,ID_HOTKEY,MOD_CONTROL,0x43); // CTRL+C
+
+            RegisterRedPanelClass();
+            CreateWindowW(L"RedPanelClass",NULL,WS_CHILD|WS_VISIBLE,
+                        100,100,80,80,
+                        hwnd,(HMENU)1,NULL,NULL);
+            
+            RegisterBluePanelClass();
+            CreateWindowW(L"BluePanelClass",NULL,WS_CHILD|WS_VISIBLE,
+                        280,100,80,80,
+                        hwnd,(HMENU)2,NULL,NULL);
+            
+            break;
+        case WM_COMMAND:
+            fwi.cbSize          =sizeof(fwi);
+            fwi.dwFlags         =FLASHW_ALL;
+            fwi.dwTimeout       =0;
+            fwi.hwnd            =hwnd;
+            fwi.uCount          =4;
+
+            FlashWindowEx(&fwi);
+
+            switch(LOWORD(wParam)){
+                case IDM_FILE_NEW:
+                case IDM_FILE_OPEN:
+                    MessageBeep(MB_ICONINFORMATION);
+                    break;
+                case IDM_FILE_QUIT:
+                    SendMessage(hwnd,WM_CLOSE,0,0);
+                    break;
+            }
+            break;
+        case WM_MOVE:
+            GetWindowRect(hwnd,&rect);
+
+            StringCbPrintfW(buf,MAX_LEN,L"%ld",rect.left);
+            SetWindowTextW(hwndSta1,buf);
+
+            StringCbPrintfW(buf,MAX_LEN,L"%ld",rect.top);
+            SetWindowTextW(hwndSta2,buf);
+
+            break;
+        case WM_KEYDOWN:
+            if(wParam==VK_ESCAPE){
+                int ret=MessageBoxW(hwnd,L"Are you sure to quit?",
+                    L"Confirm Close",MB_OKCANCEL);
+                if(ret==IDOK){
+                    SendMessage(hwnd,WM_CLOSE,0,0);    
+                }    
+            }
+            break;
+        case WM_HOTKEY:
+            if((wParam)==ID_HOTKEY){
+                CenterWindow(hwnd);    
+            }
+            break;
         case WM_DESTROY:
+            UnregisterHotKey(hwnd,ID_HOTKEY);
             PostQuitMessage(0);
             return 0;
 
@@ -86,5 +175,81 @@ __raw{
 
         }
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+
+    void CenterWindow(HWND hwnd){
+        RECT rc={0};
+
+        GetWindowRect(hwnd,&rc);
+        int win_w=rc.right-rc.left;
+        int win_h=rc.bottom-rc.top;
+
+        int screen_w=GetSystemMetrics(SM_CXSCREEN);
+        int screen_h=GetSystemMetrics(SM_CYSCREEN);
+
+        SetWindowPos(hwnd,HWND_TOP,(screen_w-win_w)/2,
+            (screen_h-win_h)/2,0,0,SWP_NOSIZE);
+    }
+
+    LRESULT CALLBACK PanelProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam){
+        switch(msg){
+            case WM_LBUTTONUP:
+                MessageBeep(MB_OK);
+                break;    
+        }    
+        return DefWindowProcW(hwnd,msg,wParam,lParam);
+    }
+    void RegisterRedPanelClass(void){
+        HBRUSH hbrush=CreateSolidBrush(RGB(255,0,0));
+        
+        WNDCLASSW rwc={0};
+
+        rwc.lpszClassName       =L"RedPanelClass";
+        rwc.hbrBackground       =hbrush;
+        rwc.lpfnWndProc         =PanelProc;
+        rwc.hCursor             =LoadCursor(0,IDC_ARROW);
+
+        RegisterClassW(&rwc);
+    }
+    void RegisterBluePanelClass(void){
+        HBRUSH hbrush = CreateSolidBrush(RGB(0, 0, 255));
+
+        WNDCLASSW rwc = {0};
+        
+        rwc.lpszClassName = L"BluePanelClass";
+        rwc.hbrBackground = hbrush;
+        rwc.lpfnWndProc   = PanelProc;
+        rwc.hCursor       = LoadCursor(0, IDC_ARROW);
+    
+        RegisterClassW(&rwc);   
+    }
+    void CreateLabels(HWND hwnd){
+        CreateWindowW(L"static",L"x: ",WS_CHILD|WS_VISIBLE,
+            200,230,25,25,hwnd,(HMENU)1,NULL,NULL);
+        
+        hwndSta1=CreateWindowW(L"static",L"150",WS_CHILD|WS_VISIBLE,
+            230,230,55,25,hwnd,(HMENU)2,NULL,NULL);
+        
+        CreateWindowW(L"static",L"y:",WS_CHILD|WS_VISIBLE,
+            200,260,25,25,hwnd,(HMENU)3,NULL,NULL);
+        
+        hwndSta2=CreateWindowW(L"static",L"150",WS_CHILD|WS_VISIBLE,
+            230,260,55,25,hwnd,(HMENU)4,NULL,NULL);
+    }
+
+    void AddMenus(HWND hwnd){
+        HMENU hMenubar;
+        HMENU hMenu;
+
+        hMenubar=CreateMenu();
+        hMenu=CreateMenu();
+
+        AppendMenuW(hMenu,MF_STRING,IDM_FILE_NEW,L"&New");
+        AppendMenuW(hMenu,MF_STRING,IDM_FILE_OPEN,L"&Open");
+        AppendMenuW(hMenu,MF_SEPARATOR,0,NULL);
+        AppendMenuW(hMenu,MF_STRING,IDM_FILE_QUIT,L"&Quit");
+
+        AppendMenuW(hMenubar,MF_POPUP,(UINT_PTR)hMenu,L"&File");
+        SetMenu(hwnd,hMenubar);
     }
 }
