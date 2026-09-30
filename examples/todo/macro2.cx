@@ -1,0 +1,17 @@
+include <stdio.h>
+
+macro Square(x) {
+    x * x
+}
+
+macro Sum(x, y) {
+    x + y
+}
+
+int main() {
+    int a = Square(1 + 2);
+    int b = Sum(10, 20);
+    printf("%d\n", a);
+    printf("%d\n", b);
+    return 0;
+}
