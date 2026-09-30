@@ -163,6 +163,12 @@ public:
             Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new SizeOfExpr(expr, p.getPos(tk.pos, end));
 
+        case TokenKind.Eval:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node e = parse();
+            Position endE = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new EvalExpr(e, p.getPos(tk.pos, endE));
+
         case TokenKind.AlignOf:
             p.consume(TokenKind.LParen, "Expected '('.");
             TypeExpr expr2 = p.parseType.parse();

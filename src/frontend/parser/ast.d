@@ -31,6 +31,7 @@ enum NodeKind : ubyte
     UnaryExpr, // 1 2
     GroupExpr, // 1 2
     SizeOfExpr, // 1 2
+    EvalExpr,
     TypeNameExpr, // 1 2
     IsExpr, // 1 2
     TTypeExpr, // 1 2
@@ -916,6 +917,36 @@ class SizeOfExpr : Node
     override void subGeneric(string[] names, TypeExpr[] types)
     {
         type_expr = subGenericType(type_expr, names, types);
+    }
+}
+
+class EvalExpr : Node
+{
+    Node expr;
+
+    this(Node expr, Position pos)
+    {
+        super(NodeKind.EvalExpr, pos);
+        this.expr = expr;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, "EvalExpr");
+        if (expr !is null)
+            expr.print(indent + 1);
+    }
+
+    override EvalExpr dup()
+    {
+        return new EvalExpr(expr is null ? null : expr.dup(), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        if (expr !is null)
+            expr.subGeneric(names, types);
     }
 }
 

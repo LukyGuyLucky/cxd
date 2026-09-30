@@ -141,6 +141,10 @@ int compile(string filename, ref CXArgs args)
 
 	check_diagnostic(err);
 
+	// evaluate __eval(...) expressions at compile time
+	new Comptime(program, err).resolve();
+	check_diagnostic(err);
+
 	// do two passes for the complete solution
 	generic.resolve(program);
 	generic.resolve(program);

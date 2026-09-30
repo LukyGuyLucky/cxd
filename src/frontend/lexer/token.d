@@ -31,6 +31,7 @@ enum TokenKind : ubyte
     Alias,
     SizeOf,
     AlignOf,
+    Eval,
     Enum,
     Union,
     Continue,

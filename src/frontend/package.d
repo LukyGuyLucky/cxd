@@ -7,6 +7,7 @@ public import frontend.type_resolve;
 public import frontend.struct_order;
 public import frontend.type_expr;
 public import frontend.generic;
+public import frontend.comptime;
 public import frontend.parser;
 public import frontend.lexer;
 public import errors;
