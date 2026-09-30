@@ -1,0 +1,110 @@
+Cx Quick Library Binding Guide (Windows / MSYS2)
+
+Goal: take any C/C++ library, compile a Cx program against it, see a window or a file in under a minute.
+
+0. Prerequisites
+
+- Cx compiler on PATH (cx.exe in e:\cxd)
+- MSYS2 UCRT64 terminal (for gcc, g++, pkg-config, wx-config)
+- The library you want to bind, either:
+  - installed via MSYS2 (pacman -S mingw-w64-ucrt-x86_64-<lib>), or
+  - downloaded as a prebuilt SDK (headers + .a/.dll)
+
+1. The One Rule
+
+--cflags is just a string appended to the compiler command line.
+Put -I, -L, -l flags there, exactly like you would on a gcc command.
+
+2. Three Patterns
+
+Pattern A - system library via pkg-config
+  cx run --opt -o app --cflags="$(pkg-config --libs --cflags <lib>)"
+
+Pattern B - prebuilt SDK with a fixed path
+  cx run --opt -o app --cflags="-I <inc> -L <libdir> -l<name>"
+
+Pattern C - C++ library, needs g++
+  cx run --cpp --opt -o app --cflags="-I <inc> -L <libdir> -l<name> -lstdc++"
+
+3. Copy-Paste Examples
+
+raylib (C, game)
+  cx run --opt -o raylibex --cflags="-I e:/raylib/include -L . -l raylib"
+
+libui (C, GUI)
+  cx run --opt -o libuiex --cflags="-I../../libui -L../../libui -lui"
+
+cfltk (C++, GUI)
+  cx run --opt -o cfltkex --cflags="-I e:/learning/cxpack/cfltk/include -l cfltk2 -l fltk -l fltk_gl -l fltk_images -l stdc++"
+
+libxlsxwriter (C, Excel)
+  cx run --opt -o hello_cx --cflags="-I e:/learning/cxpack/libxlsxwriter/include -l xlsxwritergcc -l z"
+
+LLVM-C (C, compiler)
+  cx llvm_interop.cx --cpp --cflags="-I e:/clang/include -L e:/clang/lib -l LLVM-C" -o llvm_interop
+
+wxWidgets (C++, GUI)
+  cx run --cpp --opt -o wx01 --cflags="$(wx-config-3.3 --libs --cflags)"
+
+4. Two Escape Hatches
+
+If Cx's flag handling fights you, emit C and drive gcc/g++ yourself:
+  cx run --opt -o app --emit-c
+  gcc -o app app.c `pkg-config --libs --cflags <lib>`
+or
+  
+  g++ -o app app.cpp `pkg-config --libs --cflags <lib>`
+
+Note: --emit-c writes app.c by default; with --cpp it writes app.cpp.
+
+5. Handling multiline --cflags (pkg-config / wx-config)
+
+Some config tools print more than one line. Cx joins the flags into a single
+command line, but if your build still trips on embedded newlines, flatten them
+in the shell before passing them in:
+
+  cx run --opt -o app --cflags="$(wx-config --libs --cflags | tr '\n' ' ')"
+
+This is a shell-level trick, useful for any tool whose output spans multiple
+lines (pkg-config, wx-config, llvm-config, ...).
+
+6. Minimal Working Example (raylib, 30 seconds)
+
+include "raylib.h"
+
+int main() {
+    InitWindow(800, 600, "Cx + raylib");
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawText("Hello from Cx", 190, 200, 20, LIGHTGRAY);
+        EndDrawing();
+    }
+    CloseWindow();
+    return 0;
+}
+
+  cx run --opt -o raylibex --cflags="-I e:/raylib/include -L e:/raylib/lib -l raylib"
+
+7. Mental Model
+
+cx run [--cpp] [--opt] -o <out> --cflags="<compiler flags>"
+   |
+   +- Cx -> <out>.c   (or <out>.cpp with --cpp)
+   +- gcc/g++ <out>.c <cflags> -o <out>
+
+--cflags is the only knob. If gcc can build it, cx run --cflags="..." can build it.
+
+8. Troubleshooting Cheatsheet
+
+undefined reference to lib symbols  -> add -L<libdir> -l<name> to --cflags
+fatal error: <header> not found      -> add -I<incdir> to --cflags
+C++ library, linker complains        -> add --cpp and -lstdc++
+Config tool prints multiple lines    -> flatten with tr '\n' ' ' (shell-level trick)
+Still stuck                          -> add --debug to see the exact gcc command Cx runs
+
+One line to remember:
+
+  cx run --opt -o app --cflags="$(pkg-config --libs --cflags <lib>)"
+
+If that works, every other library is the same pattern with different flags.
