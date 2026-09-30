@@ -520,15 +520,20 @@ class TypeExprGeneric : TypeExpr
         return n;
     }
 
-    override TypeExpr subGeneric(string[] names, TypeExpr[] types)
-    {
-        foreach (i, a; args)
-            args[i] = resolveGeneric(a, names, types);
-        import main : generic;
-        // writeln("name: ", name, " ", types);
-        generic.add(name, types);
-        return this;
-    }
+	override TypeExpr subGeneric(string[] names, TypeExpr[] types)
+	{
+		//import std.stdio : writeln;
+		//writeln("subGeneric: name=", name, " args=", args, " names=", names, " types=", types);
+
+		if (names.length != types.length)
+			return this;
+
+		foreach (i, a; args)
+			args[i] = resolveGeneric(a, names, types);
+		import main : generic;
+		generic.add(name, args);
+		return this;
+	}
 
     override void collectGenerics(void delegate(TypeExprGeneric) callback)
     {

@@ -1,4 +1,4 @@
-module frontend.generic;
+﻿module frontend.generic;
 
 import frontend;
 
@@ -49,79 +49,83 @@ class Generic
         return result;
     }
 
-    void resolve(Program program)
+	    void resolve(Program program)
     {
         // writeln(symbols);
         // writeln(qeue);
         // writeln(gen);
-        foreach (string name, Node symbol; symbols)
+
+        // FIX: iterate until no new instantiation is added to `qeue`.
+        // Each successful instantiation may register nested generics
+        // (e.g. Deep<int,float> -> Triple<...>, Wrapper<int>, Box<float>),
+        // which must also be resolved in subsequent passes.
+        bool changed = true;
+        while (changed)
         {
-            if (symbol is null)
-                continue;
+            changed = false;
 
-            if (symbol.kind != NodeKind.StructDecl)
-                continue;
-
-            TypeExpr[][]* instantiations = name in qeue;
-            if (instantiations is null)
-                continue;
-
-            StructDecl s = cast(StructDecl) symbol;
-            if (s is null)
-                continue;
-
-            string[] genericT = s.genericT;
-            string templt = format("%s_%s", name, genericT.join("_"));
-            // string[string] Ts;
-            // foreach (string s; genericT)
-            //     Ts[s] = s;
-
-            foreach (TypeExpr[] types; *instantiations)
+            foreach (string name, Node symbol; symbols)
             {
-                // Segurança: se o número de argumentos não bate com o
-                // número de parâmetros genéricos declarados, pula essa
-                // instanciação em vez de gerar uma struct incorreta ou
-                // indexar fora dos limites dentro de subGeneric.
-                if (types.length != genericT.length)
+                if (symbol is null)
                     continue;
 
-                string mangled = name;
-                bool err;
-                foreach (t; types)
+                if (symbol.kind != NodeKind.StructDecl)
+                    continue;
+
+                TypeExpr[][]* instantiations = name in qeue;
+                if (instantiations is null)
+                    continue;
+
+                StructDecl s = cast(StructDecl) symbol;
+                if (s is null)
+                    continue;
+
+                string[] genericT = s.genericT;
+                string templt = format("%s_%s", name, genericT.join("_"));
+
+                foreach (TypeExpr[] types; *instantiations)
                 {
-                    if (!registry.exists(t.toStr()))
-                        err = true;
-                    mangled ~= "_" ~ (t is null ? "?" : t.toStr());
+                    // Segurança: se o número de argumentos não bate com o
+                    // número de parâmetros genéricos declarados, pula essa
+                    // instanciação em vez de gerar uma struct incorreta ou
+                    // indexar fora dos limites dentro de subGeneric.
+                    if (types.length != genericT.length)
+                        continue;
+
+                    string mangled = name;
+                    bool err;
+                    foreach (t; types)
+                    {
+                        if (!registry.exists(t.toStr()))
+                            err = true;
+                        mangled ~= "_" ~ (t is null ? "?" : t.toStr());
+                    }
+
+                    if (err)
+                        continue;
+
+                    if (mangled == templt)
+                        continue;
+
+                    // Já foi gerada antes (mesma combinação exata de tipos)?
+                    if (mangled in gen)
+                        continue;
+
+                    gen[mangled] = mangled;
+                    registry.set(mangled, new TypeExprUser(TypeExprKind.Struct, mangled, symbol.pos));
+
+                    // dup() primeiro: nunca mutamos o StructDecl genérico
+                    // original, senão a próxima instanciação (ex: Calc<float>
+                    // depois de Calc<int>) operaria sobre uma árvore já
+                    // substituída pela instanciação anterior.
+                    StructDecl n = s.dup();
+                    n.name = mangled;
+                    n.subGeneric(genericT, types);
+                    program.body ~= n;
+                    changed = true;
                 }
-
-                // writeln(mangled == templt, " ", mangled, " ", templt, " ", err);
-                if (err)
-                    continue;
-
-                if (mangled == templt)
-                    continue;
-
-                // Já foi gerada antes (mesma combinação exata de tipos)?
-                if (mangled in gen)
-                    continue;
-
-                // FIX: resolve o problema do template ser gerado
-                // if (registry.exists(mangled))
-                //     continue;
-
-                gen[mangled] = mangled;
-                registry.set(mangled, new TypeExprUser(TypeExprKind.Struct, mangled, symbol.pos));
-
-                // dup() primeiro: nunca mutamos o StructDecl genérico
-                // original, senão a próxima instanciação (ex: Calc<float>
-                // depois de Calc<int>) operaria sobre uma árvore já
-                // substituída pela instanciação anterior.
-                StructDecl n = s.dup();
-                n.name = mangled;
-                n.subGeneric(genericT, types);
-                // Node[] body = n ~ program.body;
-                program.body ~= n;
             }
         }
     }
+    
 }
