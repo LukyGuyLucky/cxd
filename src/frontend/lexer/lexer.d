@@ -298,6 +298,8 @@ public:
             "__is": TokenKind.Is,
             "__type": TokenKind.Type,
             "__typename": TokenKind.TypeName,
+            "__sizeof": TokenKind.SizeOf,
+            "__alignof": TokenKind.AlignOf,
 
             "fn": TokenKind.Fn,
             "foreach": TokenKind.ForEach,

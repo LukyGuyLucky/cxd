@@ -639,9 +639,11 @@ private:
         case NodeKind.GroupExpr:
             return "(" ~ compileExpr((cast(GroupExpr) node).val) ~ ")";
 
-        case NodeKind.SizeOfExpr:
+		case NodeKind.SizeOfExpr:
             SizeOfExpr sz = cast(SizeOfExpr) node;
-            return format("sizeof(%s)", sz.type_expr.toString());
+            return sz.isAlign
+                ? format("_Alignof(%s)", sz.type_expr.toString())
+                : format("sizeof(%s)", sz.type_expr.toString());
 
         case NodeKind.TypeNameExpr:
             TypeNameExpr tn = cast(TypeNameExpr) node;

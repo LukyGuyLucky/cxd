@@ -1,0 +1,17 @@
+include <stdio.h>
+
+struct Vec3 {
+    float x;
+    float y;
+    float z;
+}
+
+int main() {
+    printf("int size      = %d\n", __sizeof(int));
+    printf("int align     = %d\n", __alignof(int));
+    printf("Vec3 size     = %d\n", __sizeof(Vec3));
+    printf("Vec3 align    = %d\n", __alignof(Vec3));
+    printf("double size   = %d\n", __sizeof(double));
+    printf("double align  = %d\n", __alignof(double));
+    return 0;
+}

@@ -891,20 +891,24 @@ class IndexExpr : Node
 
 class SizeOfExpr : Node
 {
-    this(TypeExpr expr, Position pos)
+    bool isAlign;
+
+    this(TypeExpr expr, Position pos, bool isAlign = false)
     {
         super(NodeKind.SizeOfExpr, pos);
         this.type_expr = expr;
+        this.isAlign = isAlign;
     }
 
     override void print(uint indent)
     {
-        iprint(indent, format("SizeOfExpr type=%s", type_expr));
+        iprint(indent, format("SizeOfExpr%s type=%s",
+            isAlign ? " (align)" : "", type_expr));
     }
 
     override SizeOfExpr dup()
     {
-        auto n = new SizeOfExpr(type_expr is null ? null : type_expr.dup(), pos);
+        auto n = new SizeOfExpr(type_expr is null ? null : type_expr.dup(), pos, isAlign);
         n.kind = kind;
         return n;
     }

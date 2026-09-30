@@ -157,11 +157,17 @@ public:
         case TokenKind.LBracket:
             return parseArrayLit(tk.pos);
 
-        case TokenKind.SizeOf:
+		case TokenKind.SizeOf:
             p.consume(TokenKind.LParen, "Expected '('.");
             TypeExpr expr = p.parseType.parse();
             Position end = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new SizeOfExpr(expr, p.getPos(tk.pos, end));
+
+        case TokenKind.AlignOf:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            TypeExpr expr2 = p.parseType.parse();
+            Position end2 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new SizeOfExpr(expr2, p.getPos(tk.pos, end2), true);
 
         case TokenKind.TypeName:
             p.consume(TokenKind.LParen, "Expected '('.");
