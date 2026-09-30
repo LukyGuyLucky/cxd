@@ -252,6 +252,31 @@ public:
         p.types.update(name, type);
         return new AliasDecl(name, pos);
     }
+    
+	Node parseMacroDecl(Position pos)
+    {
+        Token sname = p.consume(TokenKind.Id, "Expected macro name.");
+        p.consume(TokenKind.LParen, "Expected '('.");
+        string[] params;
+        while (!p.isAtEnd() && !p.check(TokenKind.RParen))
+        {
+            params ~= p.consume(TokenKind.Id, "Expected parameter name.").s;
+            if (!p.check(TokenKind.RParen))
+                p.consume(TokenKind.Comma, "Expected ','.");
+        }
+        p.consume(TokenKind.RParen, "Expected ')'.");
+        p.consume(TokenKind.LBrace, "Expected '{'.");
+
+        Node[] body;
+        while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
+            body ~= p.parseIntern();
+
+        p.consume(TokenKind.RBrace, "Expected '}'.");
+
+        MacroDecl m = new MacroDecl(sname.s, params, body, p.getPos(pos, sname.pos));
+        p.macros[sname.s] = m;
+        return m;
+    }
 
     Node parse()
     {
@@ -272,7 +297,10 @@ public:
 
         case TokenKind.Alias:
             return this.parseAliasDecl(tk.pos);
-
+		
+		case TokenKind.Macro:
+            return this.parseMacroDecl(tk.pos);
+		
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
         }

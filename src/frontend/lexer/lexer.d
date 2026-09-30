@@ -301,6 +301,7 @@ public:
 
             "fn": TokenKind.Fn,
             "foreach": TokenKind.ForEach,
+            "macro": TokenKind.Macro,
             "default": TokenKind.Default,
             "switch": TokenKind.Switch,
             "case": TokenKind.Case,

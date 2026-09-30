@@ -1,4 +1,4 @@
-module frontend.parser.parse_expr;
+﻿module frontend.parser.parse_expr;
 
 import frontend.parser;
 import frontend.lexer;
@@ -7,6 +7,7 @@ import frontend;
 import std.exception;
 import std.stdio;
 import std.conv;
+import std.format:format;
 
 enum Precedence : ubyte
 {
@@ -382,7 +383,7 @@ public:
         return new AssignStmt(left, right, op, p.getPos(left.pos, right.pos));
     }
 
-    Node parseCallExpr(Node left)
+	Node parseCallExpr(Node left)
     {
         Node[] args;
         while (!p.check(TokenKind.RParen))
@@ -392,6 +393,37 @@ public:
                 p.consume(TokenKind.Comma, "Expected ','.");
         }
         p.consume(TokenKind.RParen, "Expected ')'.");
+
+        // Macro expansion: if `left` names a macro, expand its body with
+        // the given arguments. Define-before-use only (macros are looked
+        // up at parse time from `p.macros`).
+        if (left.kind == NodeKind.IdentExpr)
+        {
+            IdentExpr ie = cast(IdentExpr) left;
+            MacroDecl* mp = ie.val in p.macros;
+            if (mp !is null)
+            {
+                MacroDecl def = mp.dup();
+                if (def.params.length != args.length)
+                {
+                    p.err.error(left.pos, format(
+                        "Macro '%s' expects %d argument(s), got %d.",
+                        ie.val, def.params.length, args.length));
+                    return new IdentExpr("null", new TypeExprNamed("void", left.pos), left.pos);
+                }
+
+                foreach (i, e; def.body)
+                    def.body[i] = substIdents(e, def.params, args);
+
+                if (def.body.length == 1)
+                    return def.body[0];
+
+                // multi-statement macro body: not supported in expression
+                // context yet; fall through as-is (caller will error).
+                return new Multi(def.body);
+            }
+        }
+
         return new CallExpr(left, args, left.pos);
     }
 

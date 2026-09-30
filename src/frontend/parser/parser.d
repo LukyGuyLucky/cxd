@@ -13,6 +13,7 @@ class Parser
     uint offset;
     Generic generic;
     TypeExpr[string] vars;
+    MacroDecl[string] macros;
     TypeRegistry types;
     Diagnostics err;
     ubyte flags;
@@ -177,6 +178,7 @@ class Parser
             case TokenKind.Enum:
             case TokenKind.Union:
             case TokenKind.Alias:
+            case TokenKind.Macro:
                 return true;
         default:
             return false;

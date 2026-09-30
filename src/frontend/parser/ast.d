@@ -1,4 +1,4 @@
-module frontend.parser.ast;
+﻿module frontend.parser.ast;
 
 import frontend.lexer.token;
 import frontend.type_expr;
@@ -44,6 +44,7 @@ enum NodeKind : ubyte
     EnumDecl, // 1 2
     UnionDecl, // 1 2
     AliasDecl, // 1 2
+    MacroDecl,
 
     ContinueOrBreakStmt, // 1 2
     IfStmt, // 1 2
@@ -1366,6 +1367,38 @@ class AliasDecl : Node
     }
 }
 
+class MacroDecl : Node
+{
+    string name;
+    string[] params;
+    Node[] body;
+
+    this(string name, string[] params, Node[] body, Position pos)
+    {
+        super(NodeKind.MacroDecl, pos);
+        this.name = name;
+        this.params = params;
+        this.body = body;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, format("MacroDecl %s", name));
+        foreach (n; body)
+            n.print(indent + 1);
+    }
+
+    override MacroDecl dup()
+    {
+        return new MacroDecl(name, params.dup, dupArr(body), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        // macros do not participate in generic instantiation
+    }
+}
+
 class ImportStmt : Node
 {
     string file;
@@ -1817,6 +1850,116 @@ class ForEachStmt : Node
         subGenericArr(body, names, types);
     }
 }
+
+// Substitute IdentExpr nodes whose name matches one of `names` with the
+// corresponding node in `values`. Used for macro expansion. The input tree
+// must already be dup()'d, since this mutates children in place. Each
+// substituted argument is wrapped in GroupExpr to preserve precedence.
+Node substIdents(Node n, string[] names, Node[] values)
+{
+    if (n is null)
+        return null;
+
+    if (n.kind == NodeKind.IdentExpr)
+    {
+        IdentExpr ie = cast(IdentExpr) n;
+        foreach (i, name; names)
+        {
+            if (name == ie.val)
+                return new GroupExpr(values[i].dup(), values[i].pos);
+        }
+        return n;
+    }
+
+    switch (n.kind)
+    {
+    case NodeKind.BinaryExpr:
+        BinaryExpr b = cast(BinaryExpr) n;
+        b.left  = substIdents(b.left,  names, values);
+        b.right = substIdents(b.right, names, values);
+        return b;
+
+    case NodeKind.UnaryExpr:
+        UnaryExpr u = cast(UnaryExpr) n;
+        u.val = substIdents(u.val, names, values);
+        return u;
+
+    case NodeKind.CallExpr:
+        CallExpr c = cast(CallExpr) n;
+        c.callee = substIdents(c.callee, names, values);
+        foreach (i, a; c.args)
+            c.args[i] = substIdents(a, names, values);
+        return c;
+
+    case NodeKind.MemberExpr:
+        MemberExpr m = cast(MemberExpr) n;
+        m.left  = substIdents(m.left,  names, values);
+        m.right = substIdents(m.right, names, values);
+        return m;
+
+    case NodeKind.GroupExpr:
+        GroupExpr g = cast(GroupExpr) n;
+        g.val = substIdents(g.val, names, values);
+        return g;
+
+    case NodeKind.AssignStmt:
+        AssignStmt a2 = cast(AssignStmt) n;
+        a2.left  = substIdents(a2.left,  names, values);
+        a2.right = substIdents(a2.right, names, values);
+        return a2;
+
+    case NodeKind.ReturnStmt:
+        ReturnStmt r = cast(ReturnStmt) n;
+        r.val = substIdents(r.val, names, values);
+        return r;
+
+    case NodeKind.VarDecl:
+        VarDecl v = cast(VarDecl) n;
+        if (v.val !is null)
+            v.val = substIdents(v.val, names, values);
+        return v;
+
+    case NodeKind.TernaryExpr:
+        TernaryExpr t = cast(TernaryExpr) n;
+        t.expr  = substIdents(t.expr,  names, values);
+        t.left  = substIdents(t.left,  names, values);
+        t.right = substIdents(t.right, names, values);
+        return t;
+
+    case NodeKind.IndexExpr:
+        IndexExpr ix = cast(IndexExpr) n;
+        ix.value = substIdents(ix.value, names, values);
+        ix.idx   = substIdents(ix.idx,   names, values);
+        return ix;
+
+    case NodeKind.CastExpr:
+        CastExpr ce = cast(CastExpr) n;
+        ce.expr = substIdents(ce.expr, names, values);
+        return ce;
+
+    case NodeKind.ArrayLit:
+        ArrayLit al = cast(ArrayLit) n;
+        foreach (i, e; al.values)
+            al.values[i] = substIdents(e, names, values);
+        return al;
+
+    case NodeKind.StructLit:
+        StructLit sl = cast(StructLit) n;
+        foreach (i, e; sl.values)
+            sl.values[i] = substIdents(e, names, values);
+        return sl;
+
+    case NodeKind.RangeExpr:
+        RangeExpr re = cast(RangeExpr) n;
+        re.left  = substIdents(re.left,  names, values);
+        re.right = substIdents(re.right, names, values);
+        return re;
+
+    default:
+        return n;
+    }
+}
+
 
 pragma(inline, true)
 private void iprint(uint indent, string s)

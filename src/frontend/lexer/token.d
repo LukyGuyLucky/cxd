@@ -10,6 +10,7 @@ enum TokenKind : ubyte
     // keywords
     Fn,
     ForEach,
+    Macro,
     Is,
     Type,
     TypeName,
