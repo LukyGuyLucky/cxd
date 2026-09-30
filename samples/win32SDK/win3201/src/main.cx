@@ -28,6 +28,7 @@ __raw{
 
     HWND hwndSta1;
     HWND hwndSta2;
+    //HMENU hMenu;
 
     int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
     {
@@ -87,6 +88,9 @@ __raw{
     {
         wchar_t buf[10];
         RECT rect;
+        
+        HMENU hMenu;
+        POINT point;
 
         FLASHWINFO fwi;
 
@@ -130,6 +134,21 @@ __raw{
                     SendMessage(hwnd,WM_CLOSE,0,0);
                     break;
             }
+            break;
+        case WM_RBUTTONUP:
+            point.x =LOWORD(lParam);
+            point.y =HIWORD(lParam);
+
+            hMenu=CreatePopupMenu();
+            ClientToScreen(hwnd,&point);
+
+            AppendMenuW(hMenu,MF_STRING,IDM_FILE_NEW,L"&New");
+            AppendMenuW(hMenu,MF_STRING,IDM_FILE_OPEN,L"&Open");
+            AppendMenuW(hMenu,MF_SEPARATOR,0,NULL);
+            AppendMenuW(hMenu,MF_STRING,IDM_FILE_QUIT,L"&Quit");
+
+            TrackPopupMenu(hMenu,TPM_RIGHTBUTTON,point.x,point.y,0,hwnd,NULL);
+            DestroyMenu(hMenu);
             break;
         case WM_MOVE:
             GetWindowRect(hwnd,&rect);
