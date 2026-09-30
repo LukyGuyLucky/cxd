@@ -18,7 +18,7 @@ import std.format;
 import std.getopt;
 import std.array;
 import std.file;
-import std.string:startsWith;
+import std.string:startsWith,replace;
 
 __gshared Generic generic;
 __gshared bool noHeader;
@@ -287,13 +287,14 @@ int main(string[] argv)
 	{
 		if (argv.canFind("--debug") || argv.canFind("-d"))
 			args.dbg = true;
-		foreach (i, arg; argv)
-		{
+			
+		foreach (i, arg; argv) {
 			if (arg == "--cflags" && i + 1 < argv.length)
-				args.cflags ~= argv[i + 1];
+				args.cflags ~= argv[i + 1].replace("\n", " ").replace("\r", " ");
 			else if (arg.startsWith("--cflags="))
-				args.cflags ~= arg["--cflags=".length .. $];
+				args.cflags ~= arg["--cflags=".length .. $].replace("\n", " ").replace("\r", " ");
 		}
+		
 		if (argv.canFind("--cpp"))
 			args.cpp = true;
 		if (argv.canFind("--gcc"))
