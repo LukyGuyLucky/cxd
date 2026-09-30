@@ -11,6 +11,7 @@ enum TokenKind : ubyte
     Fn,
     ForEach,
     Macro,
+    Target,
     Is,
     Type,
     TypeName,

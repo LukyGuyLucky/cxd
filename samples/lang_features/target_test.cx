@@ -1,0 +1,12 @@
+include <stdio.h>
+
+target(windows)
+int plat_id() => 1;
+
+target(linux)
+int plat_id() => 2;
+
+int main() {
+    printf("plat=%d\n", plat_id());
+    return 0;
+}

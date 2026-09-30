@@ -14,6 +14,7 @@ class Parser
     Generic generic;
     TypeExpr[string] vars;
     MacroDecl[string] macros;
+    bool[string] targetPlats;
     TypeRegistry types;
     Diagnostics err;
     ubyte flags;
@@ -36,8 +37,20 @@ class Parser
         this.parseExpr = new ParseExpr(this);
         this.parseStmt = new ParseStmt(this);
         this.parseDecl = new ParseDecl(this);
+        initTargetPlats();
     }
-
+	
+	private void initTargetPlats()
+    {
+        version(Windows) targetPlats["windows"] = true;
+        version(linux)   targetPlats["linux"]   = true;
+        version(OSX)     targetPlats["macos"]   = true;
+        version(X86)     targetPlats["x86"]     = true;
+        version(X86_64)  targetPlats["x86_64"]  = true;
+        version(ARM)     targetPlats["arm"]     = true;
+        version(AArch64) targetPlats["arm64"]   = true;
+    }
+	
     ubyte resetFlags()
     {
         ubyte f = this.flags;
@@ -179,17 +192,23 @@ class Parser
             case TokenKind.Union:
             case TokenKind.Alias:
             case TokenKind.Macro:
+            case TokenKind.Target:
                 return true;
         default:
             return false;
         }
     }
 
-    Node[] parseIntern()
+	Node[] parseIntern()
     {
         Node[] node;
         if (isDecl())
-            node ~= parseDecl.parse();
+        {
+            Node d = parseDecl.parse();
+            if (d is null)
+                return [];
+            node ~= d;
+        }
         else if (isStmt())
             node ~= parseStmt.parse();
         else

@@ -277,7 +277,30 @@ public:
         p.macros[sname.s] = m;
         return m;
     }
+	
+	Node parseTarget(Position pos)
+    {
+        p.consume(TokenKind.LParen, "Expected '(' after 'target'.");
+        Token id = p.consume(TokenKind.Id, "Expected target identifier.");
+        p.consume(TokenKind.RParen, "Expected ')'.");
 
+        // Parse the following declaration unconditionally so token
+        // stream stays consistent even when the target is inactive.
+        TypeExpr texpr = p.parseType.parse();
+        Token name = p.consume(TokenKind.Id, "Expected identifier after target.");
+
+        Node decl;
+        if (p.check(TokenKind.LParen))
+            decl = p.parseDecl.parseFnDecl(texpr, name, false);
+        else
+            decl = p.parseDecl.parseVarDecl(texpr, name, false);
+
+        if (!(id.s in p.targetPlats))
+            return null;   // target inactive: drop the declaration
+
+        return decl;
+    }
+	
     Node parse()
     {
         Token tk = p.advance();
@@ -300,6 +323,9 @@ public:
 		
 		case TokenKind.Macro:
             return this.parseMacroDecl(tk.pos);
+		
+		case TokenKind.Target:
+            return this.parseTarget(tk.pos);
 		
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
