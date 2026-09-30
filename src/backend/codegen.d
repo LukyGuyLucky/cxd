@@ -529,7 +529,7 @@ private:
             AssignStmt ass = cast(AssignStmt) node;
             return format("%s %s %s", compileExpr(ass.left), getOp(ass.op), compileExpr(ass.right));
 
-        case NodeKind.StructLit:
+		case NodeKind.StructLit:
             StructLit strc = cast(StructLit) node;
             bool haveComptimeArray;
             string[] values;
@@ -539,9 +539,10 @@ private:
                 Node n = strc.values[i];
                 if (n.type_expr !is null && n.type_expr.kind == TypeExprKind.Array)
                     haveComptimeArray = true;
-                values ~= compileExpr(n);
                 if (n.kind == NodeKind.AssignStmt)
-                    values[$-1] = "." ~ values[$-1];
+                    values ~= compileDesignatedInit(cast(AssignStmt) n);
+                else
+                    values ~= compileExpr(n);
             }
 
             TypeExpr type = strc.type_expr is null ? null : strc.type_expr;
@@ -1041,7 +1042,43 @@ private:
     {
         return cast(TypeExprPointer) type ? true : false;
     }
+	
+	
+	string compileDesignatedInit(AssignStmt ass)
+    {
+        // Collect the field path: a.b.c = value -> path = [a, b, c]
+        string[] path;
+        Node cur = ass.left;
+        while (cur !is null)
+        {
+            if (cur.kind == NodeKind.IdentExpr)
+            {
+                path = compileExpr(cur) ~ path;
+                break;
+            }
+            else if (cur.kind == NodeKind.MemberExpr)
+            {
+                MemberExpr m = cast(MemberExpr) cur;
+                path = compileExpr(m.right) ~ path;
+                cur = m.left;
+            }
+            else
+                break;
+        }
 
+        if (path.length == 0)
+            return compileExpr(ass);
+
+        // Innermost: .last = value
+        string result = format(".%s = %s", path[$-1], compileExpr(ass.right));
+
+        // Wrap outward: .outer = { ... }
+        foreach_reverse (field; path[0 .. $-1])
+            result = format(".%s = { %s }", field, result);
+
+        return result;
+    }
+    
 public:
     this(Program program, TypeRegistry types, bool[string] staticFunctions, bool noHeader, bool genHeaderFile, 
         string headerFile, ImportResolverContext* context, bool isCpp, TypeResolver resolver, 
