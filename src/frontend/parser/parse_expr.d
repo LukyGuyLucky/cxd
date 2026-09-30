@@ -189,7 +189,11 @@ public:
         case TokenKind.Dot:
             // .call() | .member
             return parseMemberExpr(null);
-
+		
+		case TokenKind.Fn:
+            return parseLambdaExpr(tk.pos);
+            
+            
         default:
             // tk.print();
             p.err.error(tk.pos, "An expression is expected.");
@@ -383,6 +387,50 @@ public:
         return new AssignStmt(left, right, op, p.getPos(left.pos, right.pos));
     }
 
+	Node parseLambdaExpr(Position pos)
+    {
+        // fn (T x, T y) Ret => expr
+        // fn (T x, T y) Ret { stmts }
+        p.consume(TokenKind.LParen, "Expected '(' after 'fn'.");
+        FnArg[] args;
+        while (!p.check(TokenKind.RParen))
+        {
+            TypeExpr at = p.parseType.parse();
+            Token an = p.consume(TokenKind.Id, "Expected parameter name.");
+            args ~= new FnArg(an.s, at, null, an.pos);
+            if (!p.check(TokenKind.RParen))
+                p.consume(TokenKind.Comma, "Expected ','.");
+        }
+        p.consume(TokenKind.RParen, "Expected ')'.");
+
+        TypeExpr ret = p.parseType.parse();
+
+        TypeExpr[] argTypes;
+        foreach (a; args)
+            argTypes ~= a.type_expr;
+        TypeExpr fnType = new TypeExprFunction(ret, argTypes, pos);
+
+        Node body;
+        if (p.match(TokenKind.Arrow))
+        {
+            Node val = parse();
+            body = new ReturnStmt(val, val.pos);
+        }
+        else if (p.check(TokenKind.LBrace))
+        {
+            Node[] stmts = p.parseStmt.parseBody();
+            body = new Multi(stmts);
+        }
+        else
+        {
+            p.err.error(pos, "Expected '=>' or '{' in lambda body.");
+            body = new ReturnStmt(null, pos);
+        }
+
+        return new LambdaExpr(args, body, ret, fnType, pos);
+    }
+
+	
 	Node parseCallExpr(Node left)
     {
         Node[] args;
@@ -427,6 +475,7 @@ public:
         return new CallExpr(left, args, left.pos);
     }
 
+	
     Node parseMemberExpr(Node left)
     {
         Node val = parse(Precedence.Call);

@@ -45,6 +45,7 @@ enum NodeKind : ubyte
     UnionDecl, // 1 2
     AliasDecl, // 1 2
     MacroDecl,
+    LambdaExpr,
 
     ContinueOrBreakStmt, // 1 2
     IfStmt, // 1 2
@@ -1398,6 +1399,54 @@ class MacroDecl : Node
         // macros do not participate in generic instantiation
     }
 }
+
+class LambdaExpr : Node
+{
+    FnArg[] args;
+    Node body;       // ReturnStmt (arrow form) or Multi (block form)
+    TypeExpr retType;
+
+    this(FnArg[] args, Node body, TypeExpr retType, TypeExpr fnType, Position pos)
+    {
+        super(NodeKind.LambdaExpr, pos);
+        this.args = args;
+        this.body = body;
+        this.retType = retType;
+        this.type_expr = fnType;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, format("LambdaExpr args=%d", args.length));
+        if (body !is null)
+            body.print(indent + 1);
+    }
+
+    override LambdaExpr dup()
+    {
+        FnArg[] argsCopy;
+        foreach (a; args)
+            argsCopy ~= (a is null ? null : a.dup());
+        return new LambdaExpr(
+            argsCopy,
+            body is null ? null : body.dup(),
+            retType is null ? null : retType.dup(),
+            type_expr is null ? null : type_expr.dup(),
+            pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        retType = subGenericType(retType, names, types);
+        foreach (a; args)
+            if (a !is null)
+                a.subGeneric(names, types);
+        // body is intentionally not traversed: lambdas cannot capture
+        // outer local variables, so there is nothing to substitute.
+    }
+}
+
 
 class ImportStmt : Node
 {

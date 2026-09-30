@@ -1,0 +1,17 @@
+include <stdio.h>
+
+alias Fn = int(int, int)
+
+int main() {
+    Fn sum = fn (int x, int y) int => x + y;
+    printf("%d\n", sum(10, 20));
+
+    Fn diff = fn (int x, int y) int {
+        if x > y return x - y;
+        return y - x;
+    };
+    printf("%d\n", diff(3, 8));
+    printf("%d\n", diff(-3,-8));
+    printf("%d\n", diff(-8,-3));
+    return 0;
+}

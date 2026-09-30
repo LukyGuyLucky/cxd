@@ -44,7 +44,8 @@ private:
     string[] unionErrors;
     string[] protos;
     string[] source;
-	
+	string[] lambdaDefs;
+    uint lambdaCounter;
 	
 	private:
 	bool isCpp;
@@ -112,6 +113,12 @@ private:
         {
             userCode ~= code;
             code = [];
+        }
+
+        if (lambdaDefs.length > 0)
+        {
+            userCode ~= "\n\n/* Lambda Functions */\n";
+            userCode ~= lambdaDefs.join("\n");
         }
 
         userCode ~= "\n\n/* Code */\n";
@@ -650,9 +657,12 @@ private:
             // writeln("right: ", tn.right.toStr());
             return format("%s", tn.left.toStr() == tn.right.toStr() ? "true" : "false");
 
-        case NodeKind.TernaryExpr:
+                case NodeKind.TernaryExpr:
             TernaryExpr tn = cast(TernaryExpr) node;
             return format("%s ? %s : %s", compileExpr(tn.expr), compileExpr(tn.left), compileExpr(tn.right));
+
+        case NodeKind.LambdaExpr:
+            return emitLambda(cast(LambdaExpr) node);
 
         default:
             return "/* invalid expr */";
@@ -856,7 +866,74 @@ private:
     {
         return indent(format("%s;", compileCallExpr(node, false, "", "", true)), ind);
     }
+	
+	string emitLambda(LambdaExpr lam)
+    {
+        string name = format("__lambda_%d", lambdaCounter++);
 
+        string argsStr;
+        for (uint i; i < lam.args.length; i++)
+        {
+            FnArg a = lam.args[i];
+            argsStr ~= a.type_expr.toStrVar(a.name);
+            if ((i + 1) < lam.args.length)
+                argsStr ~= ", ";
+        }
+        if (argsStr.length == 0)
+            argsStr = "void";
+
+        string retStr = lam.retType !is null ? lam.retType.toStrVar() : "void";
+
+        protos ~= format("%s %s(%s);", retStr, name, argsStr);
+
+        // Save ALL per-function state. `compileStmt` writes to `source`
+        // via `emit`, so we must swap `source` to a fresh buffer and
+        // capture its contents as the lambda body.
+        string[] savedSource = source;
+        string[] savedDefer = defer;
+        bool savedFnErrorUnion = fnErrorUnion;
+        string savedFnUnion = fnUnion;
+        TypeExpr[2] savedFnError = fnError;
+        TypeExpr savedFnType = fnType;
+        bool savedIsFnStatic = isFnStatic;
+
+        source = [];
+        defer = [];
+        fnErrorUnion = false;
+
+        if (lam.body !is null)
+        {
+            if (lam.body.kind == NodeKind.Multi)
+            {
+                foreach (n; (cast(Multi) lam.body).body)
+                    emit(compileStmt(n, 4), 4);
+            }
+            else if (lam.body.kind == NodeKind.ReturnStmt)
+            {
+                emit(compileRetStmt(cast(ReturnStmt) lam.body, 4), 4);
+            }
+            else
+            {
+                emit(format("return %s;", compileExpr(lam.body)), 4);
+            }
+        }
+
+        string bodyCode = source.join("\n");
+
+        // Restore state.
+        source = savedSource;
+        defer = savedDefer;
+        fnErrorUnion = savedFnErrorUnion;
+        fnUnion = savedFnUnion;
+        fnError = savedFnError;
+        fnType = savedFnType;
+        isFnStatic = savedIsFnStatic;
+
+        lambdaDefs ~= format("%s %s(%s)\n{\n%s\n}\n", retStr, name, argsStr, bodyCode);
+
+        return name;
+    }
+	
     string compileRetStmt(ReturnStmt node, uint ind)
     {
         deferResolve(ind);
