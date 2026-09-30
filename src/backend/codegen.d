@@ -494,10 +494,12 @@ private:
 					return format("%s(%s, %s) == 0", cmp, left, right);
 				}
 				
-                if (isStruct(binary.left.type_expr))
+				if (isStruct(binary.left.type_expr))
                 {
                     string name = binary.left.type_expr.toStr();
                     FnDecl fn = resolver.findMethod(name, "cmp");
+                    if (fn is null)
+                        fn = resolver.findMethod(name, name ~ "_cmp");
                     if (fn)
                         return format("%s_cmp(&%s, %s)", name, left, right);
                 }
