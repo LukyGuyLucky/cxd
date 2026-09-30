@@ -13,8 +13,8 @@ import subs;
 import sons.kids;
 import neighbors.friends;
 
-import "../learning/cxpack/ex/features/sql/sqlite3demo.cx";
-import "../learning/cxpack/ex/features/outers/outer.cx";
+import "../learning/cxpack/cx-dev/samples/features/sql/sqlite3demo.cx";
+import "../learning/cxpack/cx-dev/samples/features/outers/outer.cx";
 
 __raw{using namespace std;}
 
@@ -116,13 +116,10 @@ void features(){
     int[2][2][1] arr2x2x1=[[60],[7]];
     printf("result=%d\n\n",arr2x2x1[0][0][0]+arr2x2x1[0][0][1]);
 
-    /*  todo: --gcc 模式ok, --cpp模式有bug待修复
     Foo f=.{
         bar=.{foo.i=67}
     };
-    */
-    Foo f;
-    f.bar.foo.i=67;
+
     printf("f.bar.foo.i=%d\n\n",f.bar.foo.i);
 
     // modular test
