@@ -212,7 +212,34 @@ private:
             resolveExprType(range.left, scp);
             resolveExprType(range.right, scp);
             return range.type_expr;
+		
+		case NodeKind.ReflectExpr:
+        {
+            ReflectExpr r = cast(ReflectExpr) n;
+            TypeExpr lt;
+            if (r.typeArg !is null) { /* 类型参数不用解析 */ }
+            if (r.exprArg !is null) lt = resolveExprType(r.exprArg, scp);
+            if (r.nameArg !is null) resolveExprType(r.nameArg, scp);
 
+            TypeExpr result;
+            final switch (r.rkind)
+            {
+            case ReflectKind.FieldCount:
+                result = *types.get("int");
+                break;
+            case ReflectKind.FieldName:
+            case ReflectKind.FieldType:
+                result = new TypeExprPointer(new TypeExprNamed("char"), r.pos);
+                break;
+            case ReflectKind.FieldGet:
+            case ReflectKind.UnionGet:
+                result = lt;   // 从对象推，但其实是字段类型
+                break;
+            }
+            n.type_expr = result;
+            return result;
+        }
+		
         default:
             // já vêm com type_expr setado no próprio construtor
             return n.type_expr;
