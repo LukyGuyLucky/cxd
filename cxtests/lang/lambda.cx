@@ -10,8 +10,22 @@ test "lambda basics"{
         if x > y return x - y;
         return y - x;
     };
-    printf("%d\n", diff(3, 8));
-    printf("%d\n", diff(-3,-8));
-    printf("%d\n", diff(-8,-3));
+    check(diff(3, 8)==diff(-3,-8) &&diff(-8,-3)==diff(-8,-3));
+    
+    int(int,int) fn2int=fn(int x,int y)int=>x+y;
+    printf("fn2int(1,2)=%d\n",fn2int(1,2));
+    
     return 0;
+}
+
+int apply(int(int,int) op, int a, int b) => op(a, b);
+
+test "function types as parameters" {
+    int(int,int) add = fn (int x, int y) int => x + y;
+    printf("apply(add,3,4)=%d\n",apply(add,3,4));//for human beings
+    check_eq(apply(add, 3, 4), 7);
+
+    int(int(int,int), int, int) apply2 = fn (int(int,int) op, int a, int b) int => op(a, b);
+    printf("apply2(add,4,5)=%d\n", apply2(add, 4, 5));
+    check_eq(apply2(add,4,5),9);
 }
