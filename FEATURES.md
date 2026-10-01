@@ -85,12 +85,12 @@ Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
   cx wx01.cx --cpp --emit-c
   ```
 
-    This writes `wx01.cpp` — a human-readable source you can
+  This writes `wx01.cpp` — a human-readable source you can
   compile by hand with the same flags. Useful for debugging,
   auditing, or integrating into an existing build system. It
   is not the primary flow; the primary flow is `cx run`.
   
-    Seven working demos under `samples/wxWidgets_demo/`:
+  Seven working demos under `samples/wxWidgets_demo/`:
   basic window, JSON tree (two variants), XML tree,
   image viewer, collapsible panes, secret store.
 
@@ -116,17 +116,20 @@ Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
       return 0;
   }
   ```
-  Build via pkg-config:
-  ```
-  cx gtk_demo.cx --opt -o gtk_demo \
-    --cflags="$(pkg-config --libs --cflags gtk+-3.0)"
-  ```
-  The pkg-config pattern works for any library that ships a
-.pc file — GTK, GLib, Cairo, SDL2, libcurl, and most
-Linux-installed C libraries. This is the standard Linux
-workflow; no --cpp needed for C libraries.
+  
+    Build via `pkg-config`:
 
-cfltk (FLTK C binding), libui — builds and runs.
+  ```sh
+  cx gtk_demo.cx --opt -o gtk_demo \
+      --cflags="$(pkg-config --libs --cflags gtk+-3.0)"
+  ```
+  
+  The `pkg-config` pattern works for any library that ships a
+  `.pc` file — GTK, GLib, Cairo, SDL2, libcurl, and most
+  Linux-installed C libraries. This is the standard Linux
+  workflow; no `--cpp` needed for C libraries.
+
+- **cfltk** (FLTK C binding), **libui** — builds and runs.
 
 - **Win32 SDK** directly — windows, dialogs, menus, message
   loops, all through `__raw` blocks.
@@ -178,14 +181,14 @@ cfltk (FLTK C binding), libui — builds and runs.
   preprocessor still exists underneath, and its definitions
   are visible from Cx code**.
 
-    Tested with `cmisc.h` (custom macros), `windows.h`
+  Tested with `cmisc.h` (custom macros), `windows.h`
   (`MB_OK`, `MB_ICONINFORMATION`), and `assert.h`.
 
 - **Linux users**: `--cflags="$(pkg-config --libs --cflags <name>)"`
   is the standard way to pull in any library installed via
   the system package manager.
   
-  ---
+---
 
 ## 3. What you get over plain C
 
@@ -482,13 +485,11 @@ __fieldGet(f, "kind")        // → f.kind
 __unionGet(f.data, "apple")  // → f.data.apple
 ```
 
-All five fold at compile time. __fieldGet and __unionGet
+All five fold at compile time. `__fieldGet` and `__unionGet`
 expand to plain field access — zero runtime cost, no
 descriptor tables, no hidden data. The caller is responsible
 for knowing which union arm is live (same as mach, same as C).
 
-
-Direct translation to C operators. Zero overhead.
 
 ### C interop
 
@@ -560,6 +561,34 @@ u32 clz(u32 x) => __builtin_clz(x);
 ```
 
 GCC's low-level toolkit is available without wrappers.
+
+
+### Test blocks
+
+```cx
+test "arithmetic" {
+    check(1 + 1 == 2);
+    check(2 * 3 == 6);
+}
+
+test "vec3" {
+    Vec3 v = .{ x = 1, y = 2, z = 3 };
+    check_eq(v.x, 1);
+    check_not_eq(v.z, 4);
+}
+```
+
+Run them with:
+
+```
+cx test file.cx    # single file
+cx test            # project mode (src/main.cx)
+```
+
+`check`, `check_eq`, `check_not_eq`, `check_fail` are builtins —
+they expand to `if` blocks that count passes and failures. Test
+blocks are **not compiled** by `cx run` or `cx file.cx`; they
+only exist when `cx test` is invoked.
 
 ---
 
@@ -707,7 +736,9 @@ See `docs/cx-library-guide.txt` for the long version.
   libcurl, zlib, LLVM-C, Win32 SDK
 - **C macro interop**: tested with custom headers
   (`cmisc.h`), `windows.h`, `assert.h`
-
+- **Test framework**: `cx test` with `check` / `check_eq` /
+  `check_not_eq` / `check_fail` builtins
+  
 **Not production-ready.** It's a working tool with a small
 feature set. Use it for small projects, experiments, or as a
 learning vehicle for compiler work. Don't bet a product on it
