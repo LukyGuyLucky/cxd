@@ -395,12 +395,17 @@ int runTest(string[] argv)
     auto run = executeShell(execPath);
     dwrite(run.output);
 
-    // Clean up build artifacts. To inspect the generated C or keep
-    // the binary, use `cx file.cx --emit-c` or `cx file.cx -o name`.
-    if (exists(filec))
+	// Clean up build artifacts, unless --emit-c was passed. Passing
+    // --emit-c keeps the generated C for inspection; the binary is
+    // still removed since `cx test` is not a build command.
+    bool keepC = argv.canFind("--emit-c");
+    if (!keepC && exists(filec))
         remove(filec);
     if (exists(execPath))
         remove(execPath);
+
+    if (keepC)
+        writefln("File '%s' generated.", filec);
 
     return run.status;
 }
