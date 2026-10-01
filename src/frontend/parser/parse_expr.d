@@ -534,7 +534,13 @@ public:
                     def.body[i] = substIdents(e, def.params, args);
 
                 if (def.body.length == 1)
-                    return def.body[0];
+				{
+					Node only = def.body[0];
+					// Wrap the expansion in a GroupExpr so that operators outside
+					// the macro call (e.g. `Sum(a,b) * 2`) bind to the whole result,
+					// not just the last term of the macro body.
+					return new GroupExpr(only, only.pos);
+				}
 
                 // multi-statement macro body: not supported in expression
                 // context yet; fall through as-is (caller will error).
