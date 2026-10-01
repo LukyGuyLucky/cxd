@@ -85,12 +85,45 @@ Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
   cx wx01.cx --cpp --emit-c
   ```
 
-  This writes `wx01.cpp` — a human-readable source you can
+    This writes `wx01.cpp` — a human-readable source you can
   compile by hand with the same flags. Useful for debugging,
   auditing, or integrating into an existing build system. It
   is not the primary flow; the primary flow is `cx run`.
 
-- **cfltk** (FLTK C binding), **libui** — builds and runs.
+- **GTK** (C, cross-platform): the standard Linux desktop
+  toolkit, works on Windows too. A minimal window:
+
+  ```cx
+  include <gtk/gtk.h>
+
+  int main(int argc, char** argv) {
+      GtkWidget *window;
+
+      gtk_init(&argc, &argv);
+
+      window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+      gtk_widget_show(window);
+
+      g_signal_connect(window, "destroy",
+          G_CALLBACK(gtk_main_quit), NULL);
+
+      gtk_main();
+
+      return 0;
+  }
+  ```
+  Build via pkg-config:
+  ```
+  cx gtk_demo.cx --opt -o gtk_demo \
+    --cflags="$(pkg-config --libs --cflags gtk+-3.0)"
+  ```
+  The pkg-config pattern works for any library that ships a
+.pc file — GTK, GLib, Cairo, SDL2, libcurl, and most
+Linux-installed C libraries. This is the standard Linux
+workflow; no --cpp needed for C libraries.
+
+cfltk (FLTK C binding), libui — builds and runs.
+
 - **Win32 SDK** directly — windows, dialogs, menus, message
   loops, all through `__raw` blocks.
 
@@ -141,8 +174,12 @@ Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
   preprocessor still exists underneath, and its definitions
   are visible from Cx code**.
 
-  Tested with `cmisc.h` (custom macros), `windows.h`
+    Tested with `cmisc.h` (custom macros), `windows.h`
   (`MB_OK`, `MB_ICONINFORMATION`), and `assert.h`.
+
+- **Linux users**: `--cflags="$(pkg-config --libs --cflags <name>)"`
+  is the standard way to pull in any library installed via
+  the system package manager.
   
   ---
 
@@ -623,7 +660,9 @@ See `docs/cx-library-guide.txt` for the long version.
 ## 7. Status (as of 2026-09-30)
 
 - **Version**: 0.2.3 (fork of `FernandoTheDev/cx`)
-- **Platforms verified**: Windows 10 x64, MSYS2 UCRT64
+- **Platforms verified**: Windows 10 x64 (MSYS2 UCRT64);
+  Linux-compatible by construction (emits C99, no
+  platform-specific runtime)
 - **Toolchain**: LDC 1.40 → D → C99 → gcc 15.2
 - **Language features**: modules, package manager, nested
   monomorphized generics, macros (AST-level), lambdas
@@ -634,7 +673,7 @@ See `docs/cx-library-guide.txt` for the long version.
 - **C++ interop**: 5/5 known issues fixed (typedef, restrict,
   `void*` conversion, string literals, nested designated
   initializers)
-- **Tested libraries**: raylib, wxWidgets, cfltk, libui,
+- **Tested libraries**: raylib, wxWidgets, GTK, cfltk, libui,
   sqlite3, libxlsxwriter, libcurl, zlib, LLVM-C, Win32 SDK
 - **C macro interop**: tested with custom headers
   (`cmisc.h`), `windows.h`, `assert.h`
