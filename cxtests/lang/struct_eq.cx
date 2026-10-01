@@ -14,11 +14,46 @@ test "operator === on UDT" {
     Vec3 v2 = .{ x = 1.0, y = 2.0, z = 3.0 };
     Vec3 v3 = .{ x = 1.0, y = 2.0, z = 4.0 };
 
-    if v1 === v2 printf("v1 == v2\n");
-    else printf("v1 != v2\n");
+    // ---- Floating-point equality: a note from someone who paid for it ----
+    //
+    // These two lines look contradictory. Both are correct.
+    //
+    //   check_not_eq(v1.z, 3.0);   // FAILS
+    //   check_eq(v1.z, 3.0);       // PASSES
+    //
+    // 3.0 is exactly representable in float (3 = 1.5 * 2^1).
+    // `z = 3.0` is a literal assignment, not arithmetic, so no
+    // rounding happens. v1.z and 3.0 are bit-for-bit identical.
+    //
+    // But:
+    //
+    //   float x = 0.1 + 0.2;       // 0.3000000119..., not 0.3
+    //   check_eq(x, 0.3);          // FAILS
+    //
+    // 0.1 and 0.2 are infinite repeating decimals in binary. Each
+    // is rounded to float *before* the addition, so the sum is not
+    // the same float as the literal 0.3. This is IEEE 754 by design.
+    // No bug in Cx, no bug in the compiler, no bug in your CPU.
+    //
+    // `check_eq(a, b)` emits `(a) == (b)`. Exact. Honest. And a
+    // trap for computed floats. When "close enough" is what you
+    // mean, say so:
+    //
+    //   check_near(x, 0.3, 0.0001);
+    //
+    // The epsilon is yours. A default would be a lie: 0.001 is too
+    // strict for physics and too loose for graphics. Writing it
+    // forces you to decide what tolerance the problem actually needs.
+    //
+    //   - literal or exact float:  check_eq is fine
+    //   - arithmetic float:        use check_near
 
-    if v1 === v3 printf("v1 == v3\n");
-    else printf("v1 != v3\n");
+    // Kept as a demonstration of the trap:
+    // check_not_eq(v1.z, 3.0);   // would fail — 3.0 is exactly 3.0
+    check_eq(v1.z, 3.0);          // passes — v1.z came from a literal
+
+    check_eq(v1, v2);      // struct: uses user-defined cmp()
+    check_not_eq(v1, v3);
 
     return 0;
 }

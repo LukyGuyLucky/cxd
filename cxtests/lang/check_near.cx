@@ -1,0 +1,20 @@
+include <stdio.h>
+
+test "check_near basic" {
+    check_near(1.0, 1.0, 0.0);      // exact
+    check_near(1.0, 1.5, 0.5);      // diff == eps, passes (<=)
+    check_near(1.0, 1.5, 0.6);      // diff < eps
+    check_near(3, 3, 0);            // int, exact
+    check_near(3, 4, 1);            // int, diff == eps
+}
+
+test "check_near float arithmetic" {
+    // Runtime computation to avoid constant folding.
+    float a = 0.1;
+    float b = 0.2;
+    float sum = a + b;
+
+    // float(0.1) + float(0.2) is close to but not exactly float(0.3).
+    // This is where check_near earns its keep.
+    check_near(sum, 0.3, 0.0001);
+}
