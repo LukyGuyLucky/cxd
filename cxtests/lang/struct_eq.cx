@@ -50,6 +50,7 @@ test "operator === on UDT" {
 
     // Kept as a demonstration of the trap:
     // check_not_eq(v1.z, 3.0);   // would fail — 3.0 is exactly 3.0
+    
     check_eq(v1.z, 3.0);          // passes — v1.z came from a literal
 
     check_eq(v1, v2);      // struct: uses user-defined cmp()
