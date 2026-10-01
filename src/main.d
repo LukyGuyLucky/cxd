@@ -390,10 +390,18 @@ int runTest(string[] argv)
         return 1;
     }
 
-    // Run
+	// Run
     string execPath = OS == "windows" ? output ~ ".exe" : "./" ~ output;
     auto run = executeShell(execPath);
     dwrite(run.output);
+
+    // Clean up build artifacts. To inspect the generated C or keep
+    // the binary, use `cx file.cx --emit-c` or `cx file.cx -o name`.
+    if (exists(filec))
+        remove(filec);
+    if (exists(execPath))
+        remove(execPath);
+
     return run.status;
 }
 

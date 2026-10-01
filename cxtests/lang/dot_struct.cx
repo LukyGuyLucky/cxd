@@ -1,13 +1,12 @@
 
 
-int main(){
+test "struct dot operator"{
 
 
     Foo f=.{
         bar=.{foo.i=67}
     };
 
- return 0;
 }
 
 struct Foo{

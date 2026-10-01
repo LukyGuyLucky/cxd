@@ -8,7 +8,7 @@ macro Sum(x, y) {
     x + y
 }
 
-int main() {
+test "macro basics 2" {
     int a = Square(1 + 2);
     int b = Sum(10, 20);
     printf("%d\n", a);

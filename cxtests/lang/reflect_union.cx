@@ -29,7 +29,7 @@ void print_favorite(Favorite f) {
     printf("field count = %d\n", __fieldCount(Favorite));
 }
 
-int main() {
+test "retrieve struct fields(has union field)" {
     Favorite a = .{ kind = FruitKind.Apple, data = .{ apple = 42 } };
     Favorite b = .{ kind = FruitKind.Banana, data = .{ banana = 3.14 } };
 

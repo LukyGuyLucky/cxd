@@ -6,7 +6,7 @@ struct Vec3 {
     float z;
 }
 
-int main() {
+test "reflaction basics" {
     printf("int size      = %d\n", __sizeof(int));
     printf("int align     = %d\n", __alignof(int));
     printf("Vec3 size     = %d\n", __sizeof(Vec3));

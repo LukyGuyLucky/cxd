@@ -1,7 +1,9 @@
+include <stdio.h>
+
 macro Sum(x, y) {
     x + y
 }
 
-int main() {
-    return Sum(10, 20); // expande em comptime pra x + y
+test "macro basics" {
+    printf("Sum(10,20)=%d\n",Sum(10, 20)); // expande em comptime pra x + y
 }

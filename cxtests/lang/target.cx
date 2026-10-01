@@ -6,7 +6,7 @@ int plat_id() => 1;
 target(linux)
 int plat_id() => 2;
 
-int main() {
+test "target feture" {
     printf("plat=%d\n", plat_id());
     return 0;
 }

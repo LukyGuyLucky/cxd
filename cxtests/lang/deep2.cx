@@ -21,7 +21,6 @@ struct Deep2<A, B> {
     Wrapper<Pair<A,B>> value;
 }
 
-int main() {
+test "deep generic type" {
     Deep2<int, float> x;
-    return 0;
 }
