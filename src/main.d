@@ -235,10 +235,23 @@ int compile(string filename, ref CXArgs args)
 
 int runTest(string[] argv)
 {
-    cx_enforce(argv.length >= 3, "Usage: cx test <file.cx>");
-    string filename = argv[2];
+    string filename;
+
+    if (argv.length >= 3)
+    {
+        // Single-file mode: cx test file.cx
+        filename = argv[2];
+    }
+    else
+    {
+        // Project mode: cx test (from project root)
+        cx_enforce(exists("./src/main.cx"),
+            "Not in a Cx project (no ./src/main.cx). Use 'cx test <file.cx>' or run inside a project.");
+        filename = "./src/main.cx";
+    }
 
     cx_enforce(extension(filename) == ".cx", "Not a .cx file.");
+    
     cx_enforce(exists(filename), format("File '%s' not found.", filename));
 
     string dir = dirName(filename) ~ "/";
