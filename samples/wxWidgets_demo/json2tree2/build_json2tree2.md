@@ -6,6 +6,7 @@ Three key points:
   2. --cxxflags and --libs separated (not --libs --cflags)
   3. wxJson .cpp files BETWEEN cxxflags and libs (link order)
 
+```
 cx run --cpp --opt -o json2tree2 \
   --cflags="-DWXMAKINGDLL_JSON \
             -IE:/Learning/CodeBlocks/sdk/wxJson \
@@ -14,3 +15,4 @@ cx run --cpp --opt -o json2tree2 \
             E:/Learning/CodeBlocks/sdk/wxJson/jsonval.cpp \
             E:/Learning/CodeBlocks/sdk/wxJson/jsonwriter.cpp \
             $(wx-config-3.3 --libs)"
+```
