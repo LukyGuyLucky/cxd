@@ -89,6 +89,10 @@ Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
   compile by hand with the same flags. Useful for debugging,
   auditing, or integrating into an existing build system. It
   is not the primary flow; the primary flow is `cx run`.
+  
+    Seven working demos under `samples/wxWidgets_demo/`:
+  basic window, JSON tree (two variants), XML tree,
+  image viewer, collapsible panes, secret store.
 
 - **GTK** (C, cross-platform): the standard Linux desktop
   toolkit, works on Windows too. A minimal window:
@@ -455,11 +459,34 @@ AST. Generated C has one definition, no `#ifdef`.
 
 ### Reflection
 
+Size and alignment fold to C operators:
+
 ```cx
 __sizeof(Vec3)    // → sizeof(Vec3), resolved at compile time
 __alignof(Vec3)   // → _Alignof(Vec3)
 __is(int, float)  // → false, folded to a constant
 ```
+
+Struct introspection works at compile time:
+
+```
+struct Favorite {
+    FruitKind kind;
+    FruitData data;
+}
+
+__fieldCount(Favorite)       // → 2
+__fieldName(Favorite, 0)     // → "kind"
+__fieldType(Favorite, 0)     // → "FruitKind"
+__fieldGet(f, "kind")        // → f.kind
+__unionGet(f.data, "apple")  // → f.data.apple
+```
+
+All five fold at compile time. __fieldGet and __unionGet
+expand to plain field access — zero runtime cost, no
+descriptor tables, no hidden data. The caller is responsible
+for knowing which union arm is live (same as mach, same as C).
+
 
 Direct translation to C operators. Zero overhead.
 
@@ -667,14 +694,17 @@ See `docs/cx-library-guide.txt` for the long version.
 - **Language features**: modules, package manager, nested
   monomorphized generics, macros (AST-level), lambdas
   (no closures), error unions, `defer`, `target()`,
-  `__eval`, `__sizeof`, `__alignof`, `===` value
-  comparison, array literals (`[]` and `{}`), type
-  inference sugar (`.{...}`, `.Enum`, `.new()`)
+  `__eval`, `__sizeof`, `__alignof`, static reflection
+  (`__fieldCount`, `__fieldName`, `__fieldType`,
+  `__fieldGet`, `__unionGet`), `===` value comparison,
+  array literals (`[]` and `{}`), type inference sugar
+  (`.{...}`, `.Enum`, `.new()`)
 - **C++ interop**: 5/5 known issues fixed (typedef, restrict,
   `void*` conversion, string literals, nested designated
   initializers)
-- **Tested libraries**: raylib, wxWidgets, GTK, cfltk, libui,
-  sqlite3, libxlsxwriter, libcurl, zlib, LLVM-C, Win32 SDK
+- **Tested libraries**: raylib, wxWidgets, wxJson,
+  nlohmann/json, GTK, cfltk, libui, sqlite3, libxlsxwriter,
+  libcurl, zlib, LLVM-C, Win32 SDK
 - **C macro interop**: tested with custom headers
   (`cmisc.h`), `windows.h`, `assert.h`
 
@@ -688,8 +718,12 @@ yet.
 ## 8. What to do next
 
 - `examples/` — 70+ programs.
-- `samples/lang_features/` — one file per feature, each
-  verified working.
+- `samples/lang_features/` — 11 small files, one per
+  language feature, each verified working.
+- `samples/wxWidgets_demo/` — 7 GUI demos (json tree,
+  xml tree, image viewer, collapsible panes, secret
+  store), each with a `build_*.md` recording the exact
+  compile command.
 - `samples/features/` — the kitchen-sink integration test:
   sqlite3 + inline asm + C++ STL + Win32 + error unions +
   generics + `defer` in a single program.
