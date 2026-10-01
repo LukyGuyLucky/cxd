@@ -5,5 +5,7 @@ macro Sum(x, y) {
 }
 
 test "macro basics" {
-    printf("Sum(10,20)=%d\n",Sum(10, 20)); // expande em comptime pra x + y
+    check_eq(Sum(10,20),30);
+    
+    check_eq(Sum(10+20,60-50+5),45);
 }
