@@ -1,3 +1,5 @@
+include <stdio.h>
+
 struct Box<T> {
     T value;
 }
@@ -24,7 +26,13 @@ struct Deep<A, B> {
     > value;
 }
 
-int main() {
-    Deep<int, float> x;
+test "nested generics" {
+    Triple<char*,int,float> record=.{
+	pair=.{first="Adam",second=33},
+	value=31.456
+    };
+    check(record.pair.first==="Adam");
+    check(record.value-31.456<=0.0001);
+    
     return 0;
 }

@@ -1,12 +1,12 @@
-
+include <stdio.h>
 
 test "struct dot operator"{
-
+    printf("testing struct dot operator\n");
 
     Foo f=.{
         bar=.{foo.i=67}
     };
-
+    check_eq(f.bar.foo.i,67);
 }
 
 struct Foo{
