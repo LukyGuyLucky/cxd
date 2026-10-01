@@ -1,17 +1,16 @@
 include <stdio.h>
 
-macro Square(x) {
-    x * x
+macro Square(x) { x * x }
+
+macro Sum(x, y) { x + y }
+
+test "macro basics" {
+    check_eq(Sum(10, 20), 30);
+    check_eq(Sum(10 + 20, 60 - 50 + 5), 45);
 }
 
-macro Sum(x, y) {
-    x + y
-}
-
-test "macro basics 2" {
-    int a = Square(1 + 2);
-    int b = Sum(10, 20);
-    printf("%d\n", a);
-    printf("%d\n", b);
-    return 0;
+test "macro precedence" {
+    check_eq(Square(1 + 2), 9);   // 括号保护：(1+2)*(1+2)=9，无括号会得 5
+    check_eq(Square(3), 9);
+    check_eq(Sum(1 + 2, 3) * 2, 12);  // 括号保护：((1+2)+(3))*2=12，无括号得 9
 }
