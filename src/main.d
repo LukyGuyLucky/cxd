@@ -204,6 +204,7 @@ int compile(string filename, ref CXArgs args)
 	
 	string cppLib = args.cpp ? "-lstdc++ -fpermissive" : "";
 	
+	string cflagsJoined = args.cflags.join(" ").replace("\n", " ").replace("\r", " ");
 	string command = format("%s %s %s %s -o %s %s %s %s",
 		c_compiler,
 		filec,
@@ -212,7 +213,7 @@ int compile(string filename, ref CXArgs args)
 		args.output,
 		args.link.length > 0 ? (args.link.map!(l => format("-l%s", l).array).join(" ")) : "",
 		cppLib,
-		args.cflags.join(" "));
+		cflagsJoined);
 	
 	if (args.dbg)
 		writeln("C Compiler: ", c_compiler);
