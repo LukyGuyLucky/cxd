@@ -1,4 +1,4 @@
-module main;
+﻿module main;
 
 import backend.codegen;
 import frontend;
@@ -145,9 +145,9 @@ int compile(string filename, ref CXArgs args)
 	new Comptime(program, err).resolve();
 	check_diagnostic(err);
 
-	// do two passes for the complete solution
-	generic.resolve(program);
-	generic.resolve(program);
+    // Standard pipeline
+    generic.resolve(program);
+    generic.resolve(program);
 
 	TypeResolver resolver = new TypeResolver(registry, err);
 	resolver.resolve(program);
@@ -306,11 +306,26 @@ int runTest(string[] argv)
     }
 
     // Generate one runner function per test block
-    foreach (i, tb; tests)
+	foreach (i, tb; tests)
     {
         string fnName = format("__cx_test_%d", i);
-        FnDecl runner = new FnDecl(fnName, [], tb.body,
-            new TypeExprNamed("void"), tb.pos, 0);
+
+        // Test bodies may end with `return 0;`. Make the function `int`,
+        // and append a trailing `return 0;` if the body doesn't already
+        // end with one — this avoids "control reaches end of non-void".
+        Node[] body = tb.body.dup;
+        bool endsWithReturn;
+        if (body.length > 0)
+        {
+            Node last = body[$ - 1];
+            if (last !is null && last.kind == NodeKind.ReturnStmt)
+                endsWithReturn = true;
+        }
+        if (!endsWithReturn)
+            body ~= new ReturnStmt(new NumericLit(true, 0, tb.pos), tb.pos);
+
+        FnDecl runner = new FnDecl(fnName,[], body,
+            new TypeExprNamed("int"), tb.pos, 0);
         program.body ~= runner;
     }
 
@@ -339,6 +354,10 @@ int runTest(string[] argv)
 
     program.body ~= new FnDecl("main", [], mainBody,
         new TypeExprNamed("int"), Position.init, 0);
+
+	// Evaluate __eval(...) before generics
+    new Comptime(program, err).resolve();
+    check_diagnostic(err);
 
     // Standard pipeline
     generic.resolve(program);
