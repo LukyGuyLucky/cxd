@@ -1,4 +1,4 @@
-module frontend.parser.parse_type;
+﻿module frontend.parser.parse_type;
 
 import frontend.parser;
 import frontend.lexer;
@@ -106,9 +106,26 @@ public:
             p.tokens = tokens;
         }
 
-        p.consume(TokenKind.GThan, "Expected '>'.");
+		p.consume(TokenKind.GThan, "Expected '>'.");
         string n = name.toStr();
-        p.generic.add(n, args);
+
+        // Only register concrete instantiations. If any arg still refers
+        // to an open generic parameter (e.g. Wrapper<Pair<A,B>> inside
+        // Deep2<A,B>), skip registration here — it will be registered
+        // later by TypeExprGeneric.subGeneric once A/B are replaced.
+		bool isOpenParam(string s) { return (s in p.genericParams) !is null; }
+        bool hasOpen;
+        foreach (a; args)
+        {
+            if (a !is null && a.containsOpenGeneric(&isOpenParam))
+            {
+                hasOpen = true;
+                break;
+            }
+        }
+        if (!hasOpen)
+            p.generic.add(n, args);
+
         TypeExprGeneric t = new TypeExprGeneric(n, args, pos);
         return checkAfter(t);
     }

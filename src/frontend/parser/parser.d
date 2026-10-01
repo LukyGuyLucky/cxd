@@ -15,6 +15,7 @@ class Parser
     TypeExpr[string] vars;
     MacroDecl[string] macros;
     bool[string] targetPlats;
+    bool[string] genericParams;
     TypeRegistry types;
     Diagnostics err;
     ubyte flags;

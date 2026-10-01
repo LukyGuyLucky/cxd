@@ -1,0 +1,27 @@
+struct Box<T> {
+    T value;
+}
+
+struct Pair<A, B> {
+    A first;
+    B second;
+}
+
+struct Triple<A, B, C> {
+    Pair<A, B> pair;
+    C value;
+}
+
+struct Wrapper<T> {
+    Box<T> box;
+}
+
+// 比 generics7 更深一层：Box<Wrapper<...>> 和 Wrapper<Pair<...>>
+struct Deep2<A, B> {
+    Wrapper<Pair<A,B>> value;
+}
+
+int main() {
+    Deep2<int, float> x;
+    return 0;
+}

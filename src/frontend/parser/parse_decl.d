@@ -158,9 +158,12 @@ public:
         StructDecl[] structs;
         UnionDecl[] unions;
 
-        // registra os tipos temporariamente
+		// registra os tipos temporariamente
         foreach (string T; genericT)
+        {
+            p.genericParams[T] = true;
             p.types.set(T, new TypeExprNamed(T, Position.init));
+        }
 
         while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
         {
@@ -189,8 +192,11 @@ public:
             }
         }
 
-        foreach (string T; genericT)
+		foreach (string T; genericT)
+        {
+            p.genericParams.remove(T);
             p.types.remove(T);
+        }
 
         Node node = new StructDecl(sname.s, fields, functions, unions, structs, genericT, 
             p.getPos(pos, sname.pos));
