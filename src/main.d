@@ -233,6 +233,138 @@ int compile(string filename, ref CXArgs args)
 	return 0;
 }
 
+int runTest(string[] argv)
+{
+    cx_enforce(argv.length >= 3, "Usage: cx test <file.cx>");
+    string filename = argv[2];
+
+    cx_enforce(extension(filename) == ".cx", "Not a .cx file.");
+    cx_enforce(exists(filename), format("File '%s' not found.", filename));
+
+    string dir = dirName(filename) ~ "/";
+    string content = readText(filename);
+    string file = baseName(filename);
+    string output = file[0 .. $ - 3];
+
+    Diagnostics err = new Diagnostics;
+    TypeRegistry registry = new TypeRegistry;
+
+    Lexer l = new Lexer(file, dir, content, err, registry);
+    ImportResolverContext* ctx = new ImportResolverContext(stdDir);
+    generic = new Generic(registry);
+
+    Program program;
+    try
+    {
+        Token[] tokens = l.tokenizer();
+        check_diagnostic(err);
+        Parser p = new Parser(tokens, err, registry, generic, ctx);
+        program = p.parse();
+    }
+    catch (Exception e)
+    {
+        check_diagnostic(err);
+        writefln("Parse error: %s", e.message);
+        writeln(e);
+        return 1;
+    }
+    check_diagnostic(err);
+
+    // Collect test blocks
+    TestBlock[] tests;
+    foreach (node; program.body)
+    {
+        if (auto tb = cast(TestBlock) node)
+            tests ~= tb;
+    }
+
+    if (tests.length == 0)
+    {
+        writeln("No test blocks found in ", filename);
+        return 0;
+    }
+
+    // Rename user `main` to avoid conflict with generated runner
+    foreach (ref node; program.body)
+    {
+        if (auto fn = cast(FnDecl) node)
+            if (fn.name == "main")
+                fn.name = "__cx_user_main";
+    }
+
+    // Generate one runner function per test block
+    foreach (i, tb; tests)
+    {
+        string fnName = format("__cx_test_%d", i);
+        FnDecl runner = new FnDecl(fnName, [], tb.body,
+            new TypeExprNamed("void"), tb.pos, 0);
+        program.body ~= runner;
+    }
+
+    // Generate main() that calls all runners and reports
+    Node[] mainBody;
+    foreach (i, tb; tests)
+    {
+        mainBody ~= new CallExpr(
+            new IdentExpr(format("__cx_test_%d", i),
+                new TypeExprNamed("void"), tb.pos),
+            [], tb.pos);
+    }
+
+    mainBody ~= new CallExpr(
+        new IdentExpr("printf", new TypeExprNamed("int"), Position.init),
+        [
+            new StringLit("\\n=== %d passed, %d failed ===\\n", Position.init),
+            new IdentExpr("__cx_test_passed", new TypeExprNamed("int"), Position.init),
+            new IdentExpr("__cx_test_failed", new TypeExprNamed("int"), Position.init)
+        ],
+        Position.init);
+
+    mainBody ~= new ReturnStmt(
+        new IdentExpr("__cx_test_failed", new TypeExprNamed("int"), Position.init),
+        Position.init);
+
+    program.body ~= new FnDecl("main", [], mainBody,
+        new TypeExprNamed("int"), Position.init, 0);
+
+    // Standard pipeline
+    generic.resolve(program);
+    generic.resolve(program);
+
+    TypeResolver resolver = new TypeResolver(registry, err);
+    resolver.resolve(program);
+    check_diagnostic(err);
+
+    program.body = ResolveSymbols.resolve(err, ctx, program.body);
+    check_diagnostic(err);
+
+    new StructOrder(err).resolve(program);
+    check_diagnostic(err);
+
+    string filec = output ~ ".c";
+    string[2] src = new CodeGen(program, registry, ctx.statics, noHeader, false,
+        "", ctx, false, resolver, false, false).compile();
+    check_diagnostic(err);
+    write(filec, src[0]);
+
+    // Compile
+    string comp = which("gcc") ? "gcc" : "cc";
+    string command = format("%s %s -o %s", comp, filec, output);
+    auto exec = executeShell(command);
+    if (exec.status != 0)
+    {
+        writeln("Compile failed:");
+        writeln(exec.output);
+        return 1;
+    }
+
+    // Run
+    string execPath = OS == "windows" ? output ~ ".exe" : "./" ~ output;
+    auto run = executeShell(execPath);
+    dwrite(run.output);
+    return run.status;
+}
+
 int main(string[] argv)
 {
 	/*
@@ -286,6 +418,9 @@ int main(string[] argv)
 
 	if (isCommand(argv, "init"))
 		return runBuild();
+
+	if (isCommand(argv, "test"))
+		return runTest(argv);
 
 	bool isRun = isCommand(argv, "run");
 	if (isCommand(argv, "compile") || isRun)

@@ -45,9 +45,11 @@ enum NodeKind : ubyte
     StructDecl, // 1 2
     EnumDecl, // 1 2
     UnionDecl, // 1 2
-    AliasDecl, // 1 2
+	AliasDecl,
     MacroDecl,
+    TestBlock,
     LambdaExpr,
+    CheckExpr,
 
     ContinueOrBreakStmt, // 1 2
     IfStmt, // 1 2
@@ -921,6 +923,56 @@ class SizeOfExpr : Node
     }
 }
 
+enum CheckKind : ubyte
+{
+    Cond,     // check(cond)
+    Eq,       // check_eq(a, b)
+    NotEq,    // check_not_eq(a, b)
+    Fail      // check_fail(msg)
+}
+
+class CheckExpr : Node
+{
+    CheckKind ckind;
+    Node left;
+    Node right;
+    Node msg;
+
+    this(CheckKind ckind, Node left, Node right, Node msg, Position pos)
+    {
+        super(NodeKind.CheckExpr, pos);
+        this.ckind = ckind;
+        this.left = left;
+        this.right = right;
+        this.msg = msg;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, format("CheckExpr %s", ckind));
+        if (left !is null) left.print(indent + 1);
+        if (right !is null) right.print(indent + 1);
+        if (msg !is null) msg.print(indent + 1);
+    }
+
+    override CheckExpr dup()
+    {
+        return new CheckExpr(ckind,
+            left is null ? null : left.dup(),
+            right is null ? null : right.dup(),
+            msg is null ? null : msg.dup(),
+            pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        if (left !is null) left.subGeneric(names, types);
+        if (right !is null) right.subGeneric(names, types);
+        if (msg !is null) msg.subGeneric(names, types);
+    }
+}
+
 class EvalExpr : Node
 {
     Node expr;
@@ -1489,6 +1541,38 @@ class MacroDecl : Node
         // macros do not participate in generic instantiation
     }
 }
+
+class TestBlock : Node
+{
+    string name;
+    Node[] body;
+
+    this(string name, Node[] body, Position pos)
+    {
+        super(NodeKind.TestBlock, pos);
+        this.name = name;
+        this.body = body;
+    }
+
+    override void print(uint indent)
+    {
+        iprint(indent, format("TestBlock %s", name));
+        foreach (n; body)
+            n.print(indent + 1);
+    }
+
+    override TestBlock dup()
+    {
+        return new TestBlock(name, dupArr(body), pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        subGenericArr(body, names, types);
+    }
+}
+
 
 class LambdaExpr : Node
 {

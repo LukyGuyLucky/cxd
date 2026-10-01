@@ -165,8 +165,12 @@ private:
             compileUnionDecl(as!UnionDecl(node), ind);
             return;
 
-        case NodeKind.AliasDecl:
+		case NodeKind.AliasDecl:
         case NodeKind.ImportStmt:
+            return;
+
+        case NodeKind.TestBlock:
+            // Test blocks are only compiled by `cx test`.
             return;
 
         case NodeKind.RawStmt:
@@ -243,10 +247,13 @@ private:
         case NodeKind.MemberExpr:
             return compileMemberStmt(as!MemberExpr(node), ind);
 
-        case NodeKind.DeferStmt:
+		case NodeKind.DeferStmt:
             DeferStmt def = cast(DeferStmt) node;
             defer ~= compileExpr(def.val) ~ ";";
             return indent("/* there was a defer here, it has already been resolved */", ind);
+
+        case NodeKind.CheckExpr:
+            return compileCheck(cast(CheckExpr) node, ind);
 
         case NodeKind.IfStmt:
             return compileIfStmt(as!IfStmt(node), ind);
@@ -1000,6 +1007,40 @@ private:
         }
     }
 	
+	string compileCheck(CheckExpr c, uint ind)
+    {
+        string file = c.pos.filename;
+        uint line = c.pos.start.line;
+
+        switch (c.ckind)
+        {
+        case CheckKind.Cond:
+            return indent(format(
+                "if (!(%s)) { fprintf(stderr, \"CHECK FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                compileExpr(c.left), file, line), ind);
+
+        case CheckKind.Eq:
+            return indent(format(
+                "if ((%s) != (%s)) { fprintf(stderr, \"CHECK_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                compileExpr(c.left), compileExpr(c.right), file, line), ind);
+
+        case CheckKind.NotEq:
+            return indent(format(
+                "if ((%s) == (%s)) { fprintf(stderr, \"CHECK_NOT_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                compileExpr(c.left), compileExpr(c.right), file, line), ind);
+
+        case CheckKind.Fail:
+        {
+            string m = c.msg !is null ? compileExpr(c.msg) : "\"check_fail\"";
+            return indent(format(
+                "fprintf(stderr, \"CHECK_FAIL at %s:%d: %%s\\n\", %s); __cx_test_failed++;",
+                file, line, m), ind);
+        }
+
+        default:
+            return "";
+        }
+    }
 	
     string compileRetStmt(ReturnStmt node, uint ind)
     {
@@ -1244,7 +1285,10 @@ public:
 			cxHeader ~= "\n#define restrict __restrict__\n";
         
         if (noHeader) return;
-        cxHeader ~= `
+		cxHeader ~= `
+static int __cx_test_failed = 0;
+static int __cx_test_passed = 0;
+
 #ifndef __CLANG_STDINT_H
   #include <stdint.h>
 #endif

@@ -1,0 +1,25 @@
+include <stdio.h>
+
+struct Vec3 {
+    int x;
+    int y;
+    int z;
+}
+
+test "arithmetic" {
+    check(1 + 1 == 2);
+    check(2 * 3 == 6);
+}
+
+test "vec3" {
+    Vec3 v = .{ x = 1, y = 2, z = 3 };
+    check_eq(v.x, 1);
+    check_eq(v.y, 2);
+    check_not_eq(v.z, 4);
+    check(v.x + v.y == v.z);
+}
+
+test "should fail" {
+    check(1 == 2);
+    check_fail("todo");
+}

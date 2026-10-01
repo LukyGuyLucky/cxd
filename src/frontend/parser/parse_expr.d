@@ -169,6 +169,34 @@ public:
             Position endE = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new EvalExpr(e, p.getPos(tk.pos, endE));
 		
+		case TokenKind.Check:
+        {
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node cond = parse();
+            Position e1 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new CheckExpr(CheckKind.Cond, cond, null, null, p.getPos(tk.pos, e1));
+        }
+
+        case TokenKind.CheckEq:
+        case TokenKind.CheckNotEq:
+        {
+            CheckKind ck = tk.kind == TokenKind.CheckEq ? CheckKind.Eq : CheckKind.NotEq;
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node a = parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            Node b = parse();
+            Position e2 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new CheckExpr(ck, a, b, null, p.getPos(tk.pos, e2));
+        }
+
+        case TokenKind.CheckFail:
+        {
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node m = parse();
+            Position e3 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new CheckExpr(CheckKind.Fail, null, null, m, p.getPos(tk.pos, e3));
+        }
+		
 		case TokenKind.FieldCount:
             p.consume(TokenKind.LParen, "Expected '('.");
             TypeExpr fct = p.parseType.parse();

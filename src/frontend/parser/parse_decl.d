@@ -306,6 +306,19 @@ public:
 
         return decl;
     }
+    
+	Node parseTestBlock(Position pos)
+    {
+        Token name = p.consume(TokenKind.String, "Expected a test name string.");
+        p.consume(TokenKind.LBrace, "Expected '{'.");
+
+        Node[] body;
+        while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
+            body ~= p.parseIntern();
+        p.consume(TokenKind.RBrace, "Expected '}'.");
+
+        return new TestBlock(name.s, body, p.getPos(pos, name.pos));
+    }
 	
     Node parse()
     {
@@ -332,7 +345,10 @@ public:
 		
 		case TokenKind.Target:
             return this.parseTarget(tk.pos);
-		
+
+        case TokenKind.Test:
+            return this.parseTestBlock(tk.pos);
+
         default:
             return new IdentExpr("null", new TypeExprNamed("void", tk.pos), tk.pos);
         }

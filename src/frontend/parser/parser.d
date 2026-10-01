@@ -152,8 +152,16 @@ class Parser
         }
     }
 
-    void checkSemiColon(Node n)
+	void checkSemiColon(Node n)
     {
+        // check(...) expands to an if/else block; a trailing semicolon
+        // is optional (both `check(x)` and `check(x);` are accepted).
+        if (n.kind == NodeKind.CheckExpr)
+        {
+            match(TokenKind.SemiColon);
+            return;
+        }
+
         if (!needSemiColon(n))
             return;
         consume(TokenKind.SemiColon, "Expected ';'.", n.pos);
@@ -191,9 +199,10 @@ class Parser
             case TokenKind.Struct:
             case TokenKind.Enum:
             case TokenKind.Union:
-            case TokenKind.Alias:
+			case TokenKind.Alias:
             case TokenKind.Macro:
             case TokenKind.Target:
+            case TokenKind.Test:
                 return true;
         default:
             return false;
