@@ -177,7 +177,18 @@ private:
             foreach (v; (cast(ArrayLit) n).values)
                 resolveExprType(v, scp);
             return n.type_expr;
+		
+		case NodeKind.CheckExpr:
+        {
+            CheckExpr c = cast(CheckExpr) n;
+            TypeExpr lt;
+            if (c.left !is null) lt = resolveExprType(c.left, scp);
+            if (c.right !is null) resolveExprType(c.right, scp);
+            if (c.msg !is null) resolveExprType(c.msg, scp);
+            return lt;
+        }
 
+		
         case NodeKind.ReturnStmt:
             // writeln("RET");
             ReturnStmt ret = cast(ReturnStmt) n;
