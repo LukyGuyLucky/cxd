@@ -19,6 +19,10 @@ test "vec3" {
     check(v.x + v.y == v.z);
 }
 
+
+// This test intentionally fails. It demonstrates what a failing
+// test looks like — both a false assertion and an explicit
+// check_fail(). Remove this block if you want a clean CI run.
 test "should fail" {
     check(1 == 2);
     check_fail("todo");
