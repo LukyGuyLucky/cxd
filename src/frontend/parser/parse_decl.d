@@ -1,4 +1,4 @@
-module frontend.parser.parse_decl;
+﻿module frontend.parser.parse_decl;
 
 import frontend;
 
@@ -290,21 +290,30 @@ public:
         Token id = p.consume(TokenKind.Id, "Expected target identifier.");
         p.consume(TokenKind.RParen, "Expected ')'.");
 
-        // Parse the following declaration unconditionally so token
-        // stream stays consistent even when the target is inactive.
-        TypeExpr texpr = p.parseType.parse();
-        Token name = p.consume(TokenKind.Id, "Expected identifier after target.");
+		bool active = (id.s in p.targetPlats) !is null;
 
-        Node decl;
-        if (p.check(TokenKind.LParen))
-            decl = p.parseDecl.parseFnDecl(texpr, name, false);
+        // What follows `target(...)` can be a declaration
+        // (`target(linux) int foo();`), a statement (`target(linux)
+        // check_eq(x, y);`), or an expression. Parse it with the same
+        // routing that `parseIntern` uses, so both forms work.
+		Node body;
+        if (p.isDecl())
+            body = p.parseDecl.parse();
+        else if (p.isStmt())
+            body = p.parseStmt.parse();
         else
-            decl = p.parseDecl.parseVarDecl(texpr, name, false);
+            body = p.parseExpr.parse(Precedence.Low, true);
 
-        if (!(id.s in p.targetPlats))
-            return null;   // target inactive: drop the declaration
+        if (!active)
+        {
+            // Inactive branch: body is dropped, but its trailing
+            // semicolon still needs to be consumed — otherwise the
+            // parser hits a stray ';' on the next parseIntern().
+            p.checkSemiColon(body);
+            return null;
+        }
 
-        return decl;
+        return body;
     }
     
 	Node parseTestBlock(Position pos)
