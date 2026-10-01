@@ -1,0 +1,68 @@
+__raw{
+	//#include <wx/wxprec.h>
+	//#ifdef WX_PRECOMP
+	    #include <wx/wx.h>
+	//#endif // WX_PRECOMP
+	#include <wx/treectrl.h>
+	#include <nlohmann/json.hpp>
+	#include <fstream>
+	#include <iostream>
+	using namespace std;
+	using json=nlohmann::json;
+
+	const wxString title=L"नमस्ते दुनिया!👋🌎!";
+
+	json parseJsonFromFile(const string& filename)
+	{
+	    ifstream file(filename);
+	    json j;
+	    file>>j;
+	    return j;
+	}
+	class MainForm:public wxFrame
+	{
+	public:
+	    MainForm()
+		:wxFrame(nullptr,wxID_ANY,title,wxDefaultPosition,{500,300})
+	    {
+		auto* treeCtrl=new wxTreeCtrl(this,wxID_ANY,wxDefaultPosition,
+					     wxDefaultSize,wxTR_DEFAULT_STYLE);
+		wxTreeItemId rootId=treeCtrl->AddRoot("Root");
+		buildTree(treeCtrl,rootId,parseJsonFromFile("data.json"));
+		treeCtrl->Expand(rootId);
+		Center();
+	    }
+	private:
+	    void buildTree(wxTreeCtrl* treeCtrl,wxTreeItemId parentId,const json& node)
+	    {
+		if(node.is_object())
+		{
+		    for(auto& elem:node.items())
+		    {
+			wxTreeItemId childId=treeCtrl->AppendItem(parentId,elem.key());
+			buildTree(treeCtrl,childId,elem.value());
+		    }
+		}else if(node.is_array())
+		{
+		    for(const auto& elem:node)
+		    {
+			wxTreeItemId childId=treeCtrl->AppendItem(parentId,"Array Element");
+			buildTree(treeCtrl,childId,elem);
+		    }
+		}else
+		{
+		    treeCtrl->AppendItem(parentId,node.dump());
+		}
+	    }
+	};
+	class Application:public wxApp
+	{
+	    virtual bool OnInit() override
+	    {
+		return (new MainForm)->Show();
+	    }
+	};wxIMPLEMENT_APP(Application);
+
+
+
+}

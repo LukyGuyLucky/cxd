@@ -1,0 +1,117 @@
+__raw{
+
+	#include <wx/wx.h>
+	#include <wx/treectrl.h>
+	#include <wx/file.h>
+
+	#include <iostream>
+	#include <fstream>
+	#include "wx/jsonreader.h"
+	#include "wx/jsonwriter.h"
+	#include "wx/jsonval.h"
+	#include "wx/json_defs.h"
+	class JsonTreeFrame : public wxFrame
+	{
+	public:
+	    JsonTreeFrame() : wxFrame(nullptr, wxID_ANY, "JSON to TreeCtrl", wxDefaultPosition, wxSize(600, 400))
+	    {
+		wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+		m_treeCtrl = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTR_DEFAULT_STYLE | wxTR_HIDE_ROOT);
+		sizer->Add(m_treeCtrl, 1, wxEXPAND);
+		SetSizer(sizer);
+
+		// 读取JSON文件并填充TreeCtrl
+		LoadJsonToTree("data.json");
+	    }
+
+	private:
+	    wxTreeCtrl* m_treeCtrl;
+
+	    void LoadJsonToTree(const wxString& filename)
+	    {
+		wxFile file(filename);
+		if (!file.IsOpened())
+		{
+		    wxLogError("无法打开文件: %s", filename);
+		    return;
+		}
+
+		wxString content;
+		file.ReadAll(&content);
+		file.Close();
+
+		wxJSONValue jsonValue;
+		wxJSONReader reader;
+		int status = reader.Parse(content, &jsonValue);
+
+		if (status != 0)
+		{
+		    wxLogError("JSON解析失败");
+		    return;
+		}
+
+		wxTreeItemId root = m_treeCtrl->AddRoot("JSON Root");
+		AddJsonToTree(jsonValue, root);
+		m_treeCtrl->ExpandAll();
+	    }
+
+	    void AddJsonToTree(wxJSONValue jsonValue, wxTreeItemId parent)
+	    {
+		if (jsonValue.IsObject())
+		{
+		    auto jmap=jsonValue.AsMap();
+		    for (auto it=jmap->begin();it!=jmap->end();++it)
+		    {
+			const wxString& key = it->first;
+			const wxJSONValue value = it->second;
+			wxTreeItemId child = m_treeCtrl->AppendItem(parent, key);
+			if (value.IsObject() || value.IsArray())
+			{
+			    AddJsonToTree(value, child);
+			}
+			else
+			{
+			    wxString valueStr = value.AsString();
+			    m_treeCtrl->SetItemText(child, valueStr);
+			}
+		    }
+		}
+		else if (jsonValue.IsArray())
+		{
+		    for (size_t i = 0; i < jsonValue.Size(); ++i)
+		    {
+			auto value = jsonValue[i];
+			wxString key = wxString::Format("[%zu]", i);
+			wxTreeItemId child = m_treeCtrl->AppendItem(parent, key);
+			if (value.IsObject() || value.IsArray())
+			{
+			    AddJsonToTree(value, child);
+			}
+			else
+			{
+			    wxString valueStr = value.AsString();
+			    m_treeCtrl->SetItemText(child, valueStr);
+			}
+		    }
+		}
+		else
+		{
+		    wxString valueStr = jsonValue.AsString();
+		    m_treeCtrl->SetItemText(parent, valueStr);
+		}
+	    }
+	};
+
+	class JsonTreeApp : public wxApp
+	{
+	public:
+	    virtual bool OnInit()
+	    {
+		JsonTreeFrame* frame = new JsonTreeFrame();
+		frame->Show(true);
+		return true;
+	    }
+	};
+
+	wxIMPLEMENT_APP(JsonTreeApp);
+}

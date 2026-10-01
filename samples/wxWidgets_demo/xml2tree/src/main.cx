@@ -1,0 +1,160 @@
+__raw{
+	#include <wx/wx.h>
+	#include <wx/treectrl.h>
+	#include <wx/xml/xml.h>
+	#include <wx/sstream.h>
+
+	class SimpleXMLFrame : public wxFrame {
+	public:
+	    SimpleXMLFrame() : wxFrame(nullptr, wxID_ANY, "简洁XML解析示例",
+				       wxDefaultPosition, wxSize(400, 300)) {
+		auto* tree = new wxTreeCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+					   wxTR_HAS_BUTTONS | wxTR_LINES_AT_ROOT);
+
+		// 创建简单的XML字符串
+		wxString xmlStr = "<root><item name='项目1'><sub>子项1</sub></item>"
+				 "<item name='项目2'>内容2</item></root>";
+
+		wxXmlDocument doc;
+		wxStringInputStream stream(xmlStr);
+		if (doc.Load(stream)) {
+		    auto rootId = tree->AddRoot("XML根节点");
+		    ParseNode(doc.GetRoot(), rootId, tree);
+		    tree->ExpandAll();
+		} else {
+		    wxMessageBox("XML解析失败", "错误", wxOK | wxICON_ERROR);
+		}
+
+		loadXml();
+		listDocType();
+
+	    }
+
+	private:
+	    void loadXml()
+	    {
+		wxXmlDocument doc;
+		doc.Load("books1.xml");
+		if(doc.IsOk()){
+		    wxStringOutputStream sos;
+		    doc.Save(sos);
+
+		    wxMessageBox(sos.GetString(),"books1.xml");
+		}
+	    }
+	    void listDocType()
+	    {
+		const char *xmlText =
+		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		"<!DOCTYPE root PUBLIC \"Public-ID\" 'System\"ID\"'>\n"
+		"<root>\n"
+		"  <content/>\n"
+		"</root>\n"
+		;
+		wxStringInputStream sis(xmlText);
+		wxXmlDocument doc;
+		wxXmlDoctype dt;
+		wxString out;
+		if(doc.Load(sis))
+		{
+		    dt=doc.GetDoctype();
+
+		    out<<"Root:"<<dt.GetRootName();
+		    out<<"SysId:"<<dt.GetSystemId();
+		    out<<"PubId:"<<dt.GetPublicId();
+		    out<<"Is Valid:"<<dt.IsValid();
+
+		    out<<"Full string:"<<dt.GetFullString();
+		    dt=wxXmlDoctype(dt.GetRootName(),dt.GetSystemId());
+		    out<<"root System:"<<dt.GetFullString();
+		    dt=wxXmlDoctype(dt.GetRootName());
+		    out<<"root:\n"<<dt.GetFullString();
+		}
+		doc.SetDoctype(dt);
+		wxStringOutputStream sos;
+		if(doc.Save(sos))
+		{
+		    const char *xmlText1 =
+		    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		    "<!DOCTYPE root>\n"
+		    "<root>\n"
+		    "  <content/>\n"
+		    "</root>\n"
+		    ;
+		    out<<"\n-------------\n";
+		    out<<"sos:\n"<<sos.GetString();
+
+		    doc.SetDoctype(wxXmlDoctype());
+		    wxStringOutputStream sos2;
+		    const char *xmlText2 =
+		    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		    "<root>\n"
+		    "  <content/>\n"
+		    "</root>\n"
+		    ;
+		    out<<"\n--------------\n";
+		    out<<"xmlTest2:\n"<<xmlText2;
+		    out<<"sos2:\n"<<sos2.GetString();
+		}
+		doc.SetDoctype(wxXmlDoctype("root","Sys'id"));
+		wxStringOutputStream sos3;
+		if(doc.Save(sos3))
+		{
+		    const char *xmlText3 =
+		    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		    "<!DOCTYPE root SYSTEM \"Sys'id\">\n"
+		    "<root>\n"
+		    "  <content/>\n"
+		    "</root>\n"
+		    ;
+		    out<<"\n------------------\n";
+		    out<<"xmlText3:\n"<<xmlText3;
+		    out<<"sos3:\n"<<sos3.GetString();
+
+		    dt=wxXmlDoctype("","System\"ID\"","Public-ID");
+		    out<<"\ndt.IsValid？"<<dt.IsValid();
+		    out<<"dt.GetFullString:"<<dt.GetFullString();
+
+		    dt=wxXmlDoctype("root","","Public-ID");
+		    out<<"root:\n"<<dt.GetFullString();
+
+		    dt=wxXmlDoctype("root","O'Reilly (\"editor\")","Public-ID");
+		    out<<"dt.IsValid?"<<dt.IsValid();
+
+		    wxMessageBox(out,"xml doctype");
+		}
+	    }
+	    void ParseNode(wxXmlNode* node, wxTreeItemId parentId, wxTreeCtrl* tree) {
+		if (!node) return;
+
+		wxString text = node->GetName();
+		wxXmlAttribute* attr = node->GetAttributes();
+		while (attr) {
+		    text += " " + attr->GetName() + "=" + attr->GetValue();
+		    attr = attr->GetNext();
+		}
+
+		wxString content = node->GetContent();//.Trim();
+		content=content.Trim();
+		if (!content.IsEmpty()) text += " [" + content + "]";
+
+		wxTreeItemId id = tree->AppendItem(parentId, text);
+
+		for (wxXmlNode* n = node->GetChildren(); n; n = n->GetNext()) {
+		    if (n->GetType() == wxXML_ELEMENT_NODE) {
+			ParseNode(n, id, tree);
+		    }
+		}
+	    }
+	};
+
+	class SimpleXMLApp : public wxApp {
+	public:
+	    bool OnInit() override {
+		(new SimpleXMLFrame())->Show();
+		return true;
+	    }
+	};
+
+	wxIMPLEMENT_APP(SimpleXMLApp);
+}
