@@ -1,0 +1,45 @@
+include <stdio.h>
+
+enum FruitKind {
+    Apple,
+    Banana
+}
+
+union FruitData {
+    i64 apple;
+    double banana;
+}
+
+struct Favorite {
+    FruitKind kind;
+    FruitData data;
+}
+
+void print_favorite(Favorite f) {
+    printf("%s = %d\n", __fieldName(Favorite, 0), __fieldGet(f, "kind"));
+
+    printf("%s = ", __fieldName(Favorite, 1));
+    if f.kind == FruitKind.Apple
+        printf("apple(%lld)\n", __unionGet(f.data, "apple"));
+    else if f.kind == FruitKind.Banana
+        printf("banana(%f)\n", __unionGet(f.data, "banana"));
+    else
+        printf("<unknown tag>\n");
+
+    printf("field count = %d\n", __fieldCount(Favorite));
+}
+
+int main() {
+    Favorite a = .{ kind = FruitKind.Apple, data = .{ apple = 42 } };
+    Favorite b = .{ kind = FruitKind.Banana, data = .{ banana = 3.14 } };
+
+    printf("=== a ===\n");
+    print_favorite(a);
+    printf("=== b ===\n");
+    print_favorite(b);
+
+    printf("type of kind = %s\n", __fieldType(Favorite, 0));
+    printf("type of data = %s\n", __fieldType(Favorite, 1));
+
+    return 0;
+}

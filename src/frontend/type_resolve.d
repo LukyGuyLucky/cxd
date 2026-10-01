@@ -1,4 +1,4 @@
-module frontend.type_resolve;
+﻿module frontend.type_resolve;
 
 import frontend;
 import utils;
@@ -82,7 +82,14 @@ private:
                     return fn;
         return null;
     }
-
+	
+	public StructDecl getStruct(string name)
+    {
+        if (auto s = name in structs)
+            return *s;
+        return null;
+    }
+	
     TypeExpr resolveExprType(Node n, Scope scp)
     {
         if (n is null)

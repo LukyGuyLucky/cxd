@@ -30,9 +30,10 @@ enum NodeKind : ubyte
     BinaryExpr, // 1 2
     UnaryExpr, // 1 2
     GroupExpr, // 1 2
-    SizeOfExpr, // 1 2
+	SizeOfExpr,
     EvalExpr,
-    TypeNameExpr, // 1 2
+    ReflectExpr,
+    TypeNameExpr,
     IsExpr, // 1 2
     TTypeExpr, // 1 2
     TernaryExpr, // 1 2
@@ -947,6 +948,60 @@ class EvalExpr : Node
         type_expr = subGenericType(type_expr, names, types);
         if (expr !is null)
             expr.subGeneric(names, types);
+    }
+}
+
+enum ReflectKind : ubyte
+{
+    FieldCount,  // __fieldCount(T)         -> numeric
+    FieldName,   // __fieldName(T, i)       -> string
+    FieldType,   // __fieldType(T, i)       -> string
+    FieldGet,    // __fieldGet(obj, "n")    -> obj.n
+    UnionGet,    // __unionGet(u, "a")      -> u.a
+}
+
+class ReflectExpr : Node
+{
+    ReflectKind rkind;
+    TypeExpr typeArg;   // FieldCount / FieldName / FieldType
+    Node exprArg;       // FieldGet / UnionGet (the object)
+    Node nameArg;       // FieldName / FieldType (the index expr); FieldGet / UnionGet (string lit)
+
+    this(ReflectKind rkind, TypeExpr typeArg, Node exprArg, Node nameArg, Position pos)
+    {
+        super(NodeKind.ReflectExpr, pos);
+        this.rkind = rkind;
+        this.typeArg = typeArg;
+        this.exprArg = exprArg;
+        this.nameArg = nameArg;
+    }
+
+	override void print(uint indent)
+    {
+        iprint(indent, format("ReflectExpr %s", rkind));
+        if (typeArg !is null)
+            iprint(indent + 1, format("typeArg=%s", typeArg));
+        if (exprArg !is null)
+            exprArg.print(indent + 1);
+        if (nameArg !is null)
+            nameArg.print(indent + 1);
+    }
+
+    override ReflectExpr dup()
+    {
+        return new ReflectExpr(rkind,
+            typeArg is null ? null : typeArg.dup(),
+            exprArg is null ? null : exprArg.dup(),
+            nameArg is null ? null : nameArg.dup(),
+            pos);
+    }
+
+    override void subGeneric(string[] names, TypeExpr[] types)
+    {
+        type_expr = subGenericType(type_expr, names, types);
+        if (typeArg !is null) typeArg = subGenericType(typeArg, names, types);
+        if (exprArg !is null) exprArg.subGeneric(names, types);
+        if (nameArg !is null) nameArg.subGeneric(names, types);
     }
 }
 

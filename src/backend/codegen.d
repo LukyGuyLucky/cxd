@@ -664,7 +664,10 @@ private:
                 case NodeKind.TernaryExpr:
             TernaryExpr tn = cast(TernaryExpr) node;
             return format("%s ? %s : %s", compileExpr(tn.expr), compileExpr(tn.left), compileExpr(tn.right));
-
+		
+		case NodeKind.ReflectExpr:
+            return compileReflect(cast(ReflectExpr) node);
+		
         case NodeKind.LambdaExpr:
             return emitLambda(cast(LambdaExpr) node);
 
@@ -937,6 +940,66 @@ private:
 
         return name;
     }
+	
+	string compileReflect(ReflectExpr r)
+    {
+        switch (r.rkind)
+        {
+        case ReflectKind.FieldCount:
+        {
+            StructDecl s = resolver.getStruct(r.typeArg.toStr());
+            if (s is null)
+            {
+                writeln("Reflect error: unknown struct '", r.typeArg.toStr(), "'.");
+                return "0";
+            }
+            return format("%d", s.fields.length);
+        }
+
+        case ReflectKind.FieldName:
+        case ReflectKind.FieldType:
+        {
+            StructDecl s = resolver.getStruct(r.typeArg.toStr());
+            if (s is null)
+            {
+                writeln("Reflect error: unknown struct '", r.typeArg.toStr(), "'.");
+                return "\"\"";
+            }
+            // Index must be a compile-time integer literal
+            long idx = -1;
+            if (auto num = cast(NumericLit) r.nameArg)
+                idx = num.isLong ? num.l : cast(long) num.u;
+            if (idx < 0 || idx >= s.fields.length)
+            {
+                writeln("Reflect error: field index out of range for '", r.typeArg.toStr(), "'.");
+                return "\"\"";
+            }
+            VarDecl fld = s.fields[cast(size_t) idx];
+            if (r.rkind == ReflectKind.FieldName)
+                return format("\"%s\"", fld.name);
+            return format("\"%s\"", fld.type_expr.toStr());
+        }
+
+        case ReflectKind.FieldGet:
+        case ReflectKind.UnionGet:
+        {
+            string obj = compileExpr(r.exprArg);
+            string fld;
+            if (auto str = cast(StringLit) r.nameArg)
+                fld = str.val;
+            else
+            {
+                writeln("Reflect error: field name must be a string literal.");
+                return "0";
+            }
+            return format("%s.%s", obj, fld);
+        }
+
+        default:
+            return "/* invalid reflect */";
+        }
+    }
+	
 	
     string compileRetStmt(ReturnStmt node, uint ind)
     {

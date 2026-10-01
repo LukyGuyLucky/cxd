@@ -168,7 +168,37 @@ public:
             Node e = parse();
             Position endE = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new EvalExpr(e, p.getPos(tk.pos, endE));
+		
+		case TokenKind.FieldCount:
+            p.consume(TokenKind.LParen, "Expected '('.");
+            TypeExpr fct = p.parseType.parse();
+            Position endFc = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new ReflectExpr(ReflectKind.FieldCount, fct, null, null, p.getPos(tk.pos, endFc));
 
+        case TokenKind.FieldName:
+        case TokenKind.FieldType:
+        {
+            ReflectKind rk = tk.kind == TokenKind.FieldName ? ReflectKind.FieldName : ReflectKind.FieldType;
+            p.consume(TokenKind.LParen, "Expected '('.");
+            TypeExpr ftT = p.parseType.parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            Node idx = parse();
+            Position endFn = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new ReflectExpr(rk, ftT, null, idx, p.getPos(tk.pos, endFn));
+        }
+
+        case TokenKind.FieldGet:
+        case TokenKind.UnionGet:
+        {
+            ReflectKind rk = tk.kind == TokenKind.FieldGet ? ReflectKind.FieldGet : ReflectKind.UnionGet;
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node obj = parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            Node nm = parse();
+            Position endFg = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new ReflectExpr(rk, null, obj, nm, p.getPos(tk.pos, endFg));
+        }
+		
         case TokenKind.AlignOf:
             p.consume(TokenKind.LParen, "Expected '('.");
             TypeExpr expr2 = p.parseType.parse();
