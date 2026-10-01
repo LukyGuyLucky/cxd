@@ -6,7 +6,9 @@ int plat_id() => 1;
 target(linux)
 int plat_id() => 2;
 
-test "target feture" {
-    printf("plat=%d\n", plat_id());
+test "target dispatch" {
+    target(windows) check_eq(plat_id(),1);
+    target(linux)   check_eq(plat_id(),2);
+    
     return 0;
 }
