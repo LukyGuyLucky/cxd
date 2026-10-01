@@ -188,7 +188,20 @@ public:
             Position e2 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
             return new CheckExpr(ck, a, b, null, p.getPos(tk.pos, e2));
         }
+		
+		case TokenKind.CheckNear:
+        {
+            p.consume(TokenKind.LParen, "Expected '('.");
+            Node a = parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            Node b = parse();
+            p.consume(TokenKind.Comma, "Expected ','.");
+            Node eps = parse();
+            Position e4 = p.consume(TokenKind.RParen, "Expected ')'.").pos;
+            return new CheckExpr(CheckKind.Near, a, b, eps, p.getPos(tk.pos, e4));
+        }
 
+		
         case TokenKind.CheckFail:
         {
             p.consume(TokenKind.LParen, "Expected '('.");

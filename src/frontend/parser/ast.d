@@ -928,6 +928,7 @@ enum CheckKind : ubyte
     Cond,     // check(cond)
     Eq,       // check_eq(a, b)
     NotEq,    // check_not_eq(a, b)
+    Near,     // check_near(a, b, eps)  -- msg field holds eps
     Fail      // check_fail(msg)
 }
 

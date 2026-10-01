@@ -315,6 +315,7 @@ public:
             "check": TokenKind.Check,
             "check_eq": TokenKind.CheckEq,
             "check_not_eq": TokenKind.CheckNotEq,
+            "check_near": TokenKind.CheckNear,
             "check_fail": TokenKind.CheckFail,
             "default": TokenKind.Default,
             "switch": TokenKind.Switch,

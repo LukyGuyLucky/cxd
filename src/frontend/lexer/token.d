@@ -16,6 +16,7 @@ enum TokenKind : ubyte
     Check,
     CheckEq,
     CheckNotEq,
+    CheckNear,
     CheckFail,
     Is,
     Type,

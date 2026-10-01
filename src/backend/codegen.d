@@ -491,26 +491,13 @@ private:
             string right = compileExpr(binary.right);
             if (isPtr(binary.left.type_expr))  checkNullPtrFn(left, binary.left.pos);
             if (isPtr(binary.right.type_expr)) checkNullPtrFn(right, binary.right.pos);
-            if (binary.op == TokenKind.EEEquals)
+            
+			if (binary.op == TokenKind.EEEquals)
             {
-                if (isString(binary.left.type_expr) && isString(binary.right.type_expr))
-				{
-					string cmp = "strcmp";
-					if (isWString(binary.left.type_expr) || isWString(binary.right.type_expr))
-						cmp = "wcscmp";
-					return format("%s(%s, %s) == 0", cmp, left, right);
-				}
-				
-				if (isStruct(binary.left.type_expr))
-                {
-                    string name = binary.left.type_expr.toStr();
-                    FnDecl fn = resolver.findMethod(name, "cmp");
-                    if (fn is null)
-                        fn = resolver.findMethod(name, name ~ "_cmp");
-                    if (fn)
-                        return format("%s_cmp(&%s, %s)", name, left, right);
-                }
+                return compileEqualsImpl(left, right,
+                    binary.left.type_expr, binary.right.type_expr);
             }
+            
             return format("%s %s %s", left, getOp(binary.op), right);
 
         case NodeKind.UnaryExpr:
@@ -1007,6 +994,32 @@ private:
         }
     }
 	
+	// Emit a C expression that is true iff `left == right` under Cx
+    // semantics (strcmp for strings, cmp() for structs, == otherwise).
+    // Shared by `===` codegen and by `check_eq` / `check_not_eq`.
+    string compileEqualsImpl(string left, string right, TypeExpr lt, TypeExpr rt)
+    {
+        if (isString(lt) && isString(rt))
+        {
+            string cmp = "strcmp";
+            if (isWString(lt) || isWString(rt))
+                cmp = "wcscmp";
+            return format("%s(%s, %s) == 0", cmp, left, right);
+        }
+
+        if (isStruct(lt))
+        {
+            string name = lt.toStr();
+            FnDecl fn = resolver.findMethod(name, "cmp");
+            if (fn is null)
+                fn = resolver.findMethod(name, name ~ "_cmp");
+            if (fn)
+                return format("%s_cmp(&%s, %s)", name, left, right);
+        }
+
+        return format("(%s) == (%s)", left, right);
+    }
+	
 	string compileCheck(CheckExpr c, uint ind)
     {
         string file = c.pos.filename;
@@ -1019,16 +1032,43 @@ private:
                 "if (!(%s)) { fprintf(stderr, \"CHECK FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
                 compileExpr(c.left), file, line), ind);
 
-        case CheckKind.Eq:
+		case CheckKind.Eq:
+        {
+            string cmp = compileEqualsImpl(compileExpr(c.left), compileExpr(c.right),
+                c.left.type_expr, c.right.type_expr);
             return indent(format(
-                "if ((%s) != (%s)) { fprintf(stderr, \"CHECK_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
-                compileExpr(c.left), compileExpr(c.right), file, line), ind);
+                "if (!(%s)) { fprintf(stderr, \"CHECK_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                cmp, file, line), ind);
+        }
 
         case CheckKind.NotEq:
+        {
+            string cmp = compileEqualsImpl(compileExpr(c.left), compileExpr(c.right),
+                c.left.type_expr, c.right.type_expr);
             return indent(format(
-                "if ((%s) == (%s)) { fprintf(stderr, \"CHECK_NOT_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
-                compileExpr(c.left), compileExpr(c.right), file, line), ind);
+                "if (%s) { fprintf(stderr, \"CHECK_NOT_EQ FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                cmp, file, line), ind);
+        }
+		
+		case CheckKind.Near:
+        {
+            // Ensure <math.h> is available for fabs(). Inject once.
+            if ("include <math.h>" !in includes)
+            {
+                includes["include <math.h>"] = true;
+                header ~= "#include <math.h>";
+            }
 
+            string a = compileExpr(c.left);
+            string b = compileExpr(c.right);
+            string eps = compileExpr(c.msg);
+
+            return indent(format(
+                "if (!(fabs((double)(%s) - (double)(%s)) <= (double)(%s))) { fprintf(stderr, \"CHECK_NEAR FAILED at %s:%d\\n\"); __cx_test_failed++; } else { __cx_test_passed++; }",
+                a, b, eps, file, line), ind);
+        }
+
+		
         case CheckKind.Fail:
         {
             string m = c.msg !is null ? compileExpr(c.msg) : "\"check_fail\"";
