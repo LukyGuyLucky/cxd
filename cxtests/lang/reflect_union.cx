@@ -16,30 +16,38 @@ struct Favorite {
 }
 
 void print_favorite(Favorite f) {
-    printf("%s = %d\n", __fieldName(Favorite, 0), __fieldGet(f, "kind"));
-
-    printf("%s = ", __fieldName(Favorite, 1));
+    printf("kind = %d\n", __fieldGet(f, "kind"));
     if f.kind == FruitKind.Apple
-        printf("apple(%lld)\n", __unionGet(f.data, "apple"));
+        printf("data = apple(%lld)\n", __unionGet(f.data, "apple"));
     else if f.kind == FruitKind.Banana
-        printf("banana(%f)\n", __unionGet(f.data, "banana"));
+        printf("data = banana(%f)\n", __unionGet(f.data, "banana"));
     else
-        printf("<unknown tag>\n");
+        printf("data = <unknown tag>\n");
 
     printf("field count = %d\n", __fieldCount(Favorite));
 }
 
-test "retrieve struct fields(has union field)" {
-    Favorite a = .{ kind = FruitKind.Apple, data = .{ apple = 42 } };
+test "reflect: metadata" {
+    check_eq(__fieldCount(Favorite), 2);
+
+    check(__fieldName(Favorite, 0) === "kind");
+    check(__fieldName(Favorite, 1) === "data");
+    check(__fieldType(Favorite, 0) === "FruitKind");
+    check(__fieldType(Favorite, 1) === "FruitData");
+}
+
+test "reflect: union live arm" {
+    Favorite a = .{ kind = FruitKind.Apple,  data = .{ apple  = 42   } };
     Favorite b = .{ kind = FruitKind.Banana, data = .{ banana = 3.14 } };
 
-    printf("=== a ===\n");
+    check_eq(__fieldGet(a, "kind"), FruitKind.Apple);
+    check_eq(__unionGet(a.data, "apple"), 42);
+
+    check_eq(__fieldGet(b, "kind"), FruitKind.Banana);
+    check_near(__unionGet(b.data, "banana"), 3.14, 0.0001);
+
+    printf("--- a ---\n");
     print_favorite(a);
-    printf("=== b ===\n");
+    printf("--- b ---\n");
     print_favorite(b);
-
-    printf("type of kind = %s\n", __fieldType(Favorite, 0));
-    printf("type of data = %s\n", __fieldType(Favorite, 1));
-
-    return 0;
 }
