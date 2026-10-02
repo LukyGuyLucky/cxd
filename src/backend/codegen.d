@@ -153,7 +153,7 @@ private:
             includes[c] = true;
             header ~= "#" ~ c;
             return;
-
+            
         case NodeKind.StructDecl:
             compileStructDecl(as!StructDecl(node), ind);
             return;
@@ -363,7 +363,52 @@ private:
             // }
 
             return "";
+        case NodeKind.StructDecl:
+        {
+            StructDecl sd = as!StructDecl(node);
 
+            // Generic structs cannot live inside a function body:
+            // there is no file-scope slot to instantiate them into.
+            if (sd.genericT.length > 0)
+            {
+                stderr.writefln(
+                    "Cx error: generic struct '%s' cannot be defined inside a function. "
+                    ~ "Move it to file scope.",
+                    sd.name);
+                emit("/* generic struct inside function: unsupported */", ind);
+                return "";
+            }
+
+            // A method is a C function. C does not allow function
+            // definitions inside function bodies, so a function-local
+            // struct cannot have methods. Refuse instead of silently
+            // emitting a broken definition.
+            if (sd.functions.length > 0)
+            {
+                stderr.writefln(
+                    "Cx error: struct '%s' defined inside a function has methods, "
+                    ~ "which C cannot express. Move the struct to file scope.",
+                    sd.name);
+                emit("#error Cx: struct with methods defined inside a function", ind);
+                return "";
+            }
+
+            // Block-scope struct definition. The typedef makes bare
+            // `Name x;` resolve inside the block, matching file-scope
+            // behavior. C does support this; there is no reason for Cx
+            // to reject it.
+            if (!isCpp)
+                emit(format("typedef struct %s %s;", sd.name, sd.name), ind);
+            emit(format("struct %s", sd.name), ind);
+            emit("{", ind);
+            foreach (VarDecl v; sd.fields)
+                emit(compileVarDecl(v, ind + 4), ind + 4);
+            foreach (UnionDecl un; sd.unions)
+                emit(compileUnionDecl(un, ind + 4, true), ind + 4);
+            emit("};", ind);
+            return "";
+        }
+		
         default:
             return indent("/* invalid stmt */", ind);
         }
