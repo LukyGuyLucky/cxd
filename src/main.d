@@ -251,7 +251,7 @@ int runTest(string[] argv)
     }
 
     cx_enforce(extension(filename) == ".cx", "Not a .cx file.");
-    
+
     cx_enforce(exists(filename), format("File '%s' not found.", filename));
 
     string dir = dirName(filename) ~ "/";
@@ -306,7 +306,7 @@ int runTest(string[] argv)
     }
 
     // Generate one runner function per test block
-	foreach (i, tb; tests)
+    foreach (i, tb; tests)
     {
         string fnName = format("__cx_test_%d", i);
 
@@ -355,7 +355,7 @@ int runTest(string[] argv)
     program.body ~= new FnDecl("main", [], mainBody,
         new TypeExprNamed("int"), Position.init, 0);
 
-	// Evaluate __eval(...) before generics
+    // Evaluate __eval(...) before generics
     new Comptime(program, err).resolve();
     check_diagnostic(err);
 
@@ -390,12 +390,34 @@ int runTest(string[] argv)
         return 1;
     }
 
-	// Run
+    // Run
     string execPath = OS == "windows" ? output ~ ".exe" : "./" ~ output;
+
+    // Guard: the compile step above checks exec.status, but a C
+    // compiler can in principle exit 0 without producing the
+    // binary (misconfigured output dir, stale toolchain, ...).
+    // Fail loudly instead of executing whatever is on disk.
+    if (!exists(execPath))
+    {
+        writefln("[cx test] expected binary '%s' was not produced", execPath);
+        if (exists(filec))
+            remove(filec);
+        return 1;
+    }
+
     auto run = executeShell(execPath);
     dwrite(run.output);
 
-	// Clean up build artifacts, unless --emit-c was passed. Passing
+    // executeShell does not surface the child's exit status on its
+    // own. On Windows, a segfault or an assert() abort produces an
+    // empty stdout and a non-zero status, so without this line the
+    // caller sees *silence* — indistinguishable from "no tests
+    // ran". That exact silence hid an earlier segfault in this
+    // suite (see array_test.cx header). Keep the status visible.
+    if (run.status != 0)
+        writefln("[cx test] binary exited with status %d", run.status);
+
+    // Clean up build artifacts, unless --emit-c was passed. Passing
     // --emit-c keeps the generated C for inspection; the binary is
     // still removed since `cx test` is not a build command.
     bool keepC = argv.canFind("--emit-c");
