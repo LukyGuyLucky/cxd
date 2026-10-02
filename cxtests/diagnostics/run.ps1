@@ -1,24 +1,27 @@
 # Run all negative-input tests under cxtests/diagnostics/.
 #
-# Two kinds of "negative" tests are supported, distinguished by
+# Three kinds of "negative" tests are supported, distinguished by
 # which @expect-* header is present:
 #
-#   Compile-time diagnostics:
+#   Compile-time diagnostics (Cx front-end):
 #     // @expect-errors: N
 #     // @expect-first-at: L:C
+#
+#   C-compile failure (codegen-level error surfaced by the C compiler):
+#     // @expect-compile-fail-contains: <substring>
 #
 #   Runtime check failure:
 #     // @expect-runtime-fail: N
 #
-# Each test declares at most one kind. Files without either header
-# are reported as INFO and not counted.
+# Each test declares at most one kind. Files without any header are
+# reported as INFO and not counted.
 #
 # Usage:
 #     powershell -ExecutionPolicy Bypass -File run.ps1
 #
 # Exit code: 0 if all annotated tests pass, 1 otherwise.
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $dir
@@ -28,10 +31,11 @@ try {
     Get-ChildItem -Filter '*.cx' | Sort-Object Name | ForEach-Object {
         $file = $_.Name
 
-        $expErr = $null
-        $expAt  = $null
-        $expRun = $null
-        Get-Content $file -TotalCount 12 | ForEach-Object {
+        $expErr    = $null
+        $expAt     = $null
+        $expRun    = $null
+        $expCFail  = $null
+        Get-Content $file -TotalCount 20 | ForEach-Object {
             if ($_ -match '^\s*//\s*@expect-errors:\s*(\d+)') {
                 $expErr = [int]$Matches[1]
             }
@@ -40,6 +44,9 @@ try {
             }
             if ($_ -match '^\s*//\s*@expect-runtime-fail:\s*(\d+)') {
                 $expRun = [int]$Matches[1]
+            }
+            if ($_ -match '^\s*//\s*@expect-compile-fail-contains:\s*(.+?)\s*$') {
+                $expCFail = $Matches[1]
             }
         }
 
@@ -67,6 +74,19 @@ try {
                 $pass++
             } else {
                 Write-Host ("FAIL  {0,-28} expected errors={1} first-at={2}, got errors={3} first-at={4}" -f $file, $expErr, $expAt, $gotErr, $gotAt) -ForegroundColor Red
+                Write-Host $raw
+                $fail++
+            }
+            return
+        }
+
+        # -- C-compile failure test (codegen-level error) --
+        if ($null -ne $expCFail) {
+            if ($raw -like "*$expCFail*") {
+                Write-Host ("PASS  {0,-28} compile-fail contains: {1}" -f $file, $expCFail) -ForegroundColor Green
+                $pass++
+            } else {
+                Write-Host ("FAIL  {0,-28} expected compile-fail containing: {1}" -f $file, $expCFail) -ForegroundColor Red
                 Write-Host $raw
                 $fail++
             }
