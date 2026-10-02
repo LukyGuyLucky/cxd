@@ -231,6 +231,16 @@ private:
 		{
 			char c = advance();
 			
+			// A bare newline inside a string literal is a lex error:
+			// C string literals cannot span lines without a line
+			// continuation. Bail out immediately instead of consuming
+			// the rest of the file and producing cascading errors.
+			if (c == '\n' || c == '\r')
+			{
+				err.error(getPos(start_o, start_l), "The string was not closed.");
+				return "/* err */";
+			}
+			
 			if (c == '\\' && !isAtEnd())
 			{
 				buffer ~= [c];
@@ -238,7 +248,7 @@ private:
 			}
 			else
 			{
-				checkNewLine(c);
+				//checkNewLine(c);
 				buffer ~= [c];
 			}
 		}
@@ -699,7 +709,7 @@ public:
                 goto end;
             }
 
-            err.error(getPos(loffset - size, line), format("Unkwnown char: %c", ch));
+            err.error(getPos(loffset - size, line), format("Unknown char: %c", ch));
             continue;
         end:
             pushToken(Token.tk(k, getPos(loffset - size, line)));
