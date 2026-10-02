@@ -1,0 +1,25 @@
+import std.io;
+import std.string;
+
+test "module call styles" {
+    // Style 1: imported symbol directly (no prefix).
+    printf("direct: %d\n", 42);
+
+    // Style 2: struct static method — Cx's way of namespacing.
+    String s = String.from("hello");
+    check(s.length == 5);
+
+    // Style 3: NOT SUPPORTED. Cx has no module-qualified calls.
+    //
+    // `io.printf(...)` is parsed as a method call on a variable
+    // named `io`. Generated C: `io_printf(&io, ...)` — gcc then
+    // reports `'io' undeclared`. Not a bug — module system is
+    // struct-based, not namespace-based.
+    //
+    // To get a prefix, wrap functions in a struct:
+    //
+    //   struct IO { static int printf(char* fmt, ...) => ...; }
+    //   IO.printf("via module: %d\n", 42);
+    //
+    // io.printf("via module: %d\n", 42);
+}
