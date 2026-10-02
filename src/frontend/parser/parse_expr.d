@@ -70,7 +70,15 @@ public:
             Node n = parse();
             n.type_expr = new TypeExprRestrict(n.type_expr, tk.pos);
             return n;
-
+		
+		case TokenKind.Inline:
+            // `inline` accepted as a syntax promise but not emitted to C.
+            // Cx generates a single translation unit, so C's inline
+            // (which exists to allow duplicate definitions across TUs)
+            // has no role here. Just consume the token and let the
+            // normal declaration path handle what follows.
+            return parse();
+		
         case TokenKind.Id:
             TypeExpr* t = p.types.get(tk.s);
             TypeExpr t2;

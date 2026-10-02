@@ -1,0 +1,13 @@
+include <stdio.h>
+
+inline int add(int a, int b) => a + b;
+
+inline int square(int x) => x * x;
+
+test "inline keyword accepted" {
+    check_eq(add(2, 3), 5);
+    check_eq(square(4), 16);
+
+    inline int x = 42;
+    check_eq(x, 42);
+}
