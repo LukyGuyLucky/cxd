@@ -1,0 +1,57 @@
+include <stdio.h>
+
+// 数组作为参数——C 里不可能直接传 {1,2,3}
+int sum3(int[3] a) {
+    return a[0] + a[1] + a[2];
+}
+
+// 不定长数组接收字面量
+int sum_any(int[] a, int size) {
+    int total = 0;
+    for(int i = 0; i < size; i++) {
+        total += a[i];
+    }
+    return total;
+}
+
+test "array literal as expression" {
+    // 声明时初始化——[] 和 {} 都行
+    int[3] a = [1, 2, 3];
+    int[3] b = {1, 2, 3};      // C 风格也接受
+
+    check_eq(a[0], 1);
+    check_eq(b[0], 1);
+
+    // 作为参数直接传——C 里做不到
+    check_eq(sum3([4, 5, 6]), 15);
+    check_eq(sum3([4, 5, 6]), 15);
+
+    // 不定长接收
+    check_eq(sum_any([10, 20, 30], 3), 60);
+    check_eq(sum_any([1], 1), 1);
+}
+
+test "array literal nesting" {
+    // 三维嵌套——[] 每层对应一个维度
+    int[2][2][1] arr = [[60], [7]];
+    check_eq(arr[0][0][0], 60);
+    check_eq(arr[1][0][0], 7);
+
+    // 二维
+    int[2][3] m = [[1, 2, 3], [4, 5, 6]];
+    check_eq(m[0][0], 1);
+    check_eq(m[0][2], 3);
+    check_eq(m[1][0], 4);
+    check_eq(m[1][2], 6);
+}
+
+test "array literal length inference" {
+    // int[] 不指定长度，编译器从字面量推
+    int[] a = [1, 2, 3, 4, 5];
+    int n = sizeof(a) / sizeof(a[0]);
+    check_eq(n, 5);
+
+    int[] b = [42];
+    n = sizeof(b) / sizeof(b[0]);
+    check_eq(n, 1);
+}
