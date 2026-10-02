@@ -141,14 +141,49 @@ public:
     {
         return _list.any!(d => d.severity == Severity.Warning);
     }
-
     bool report()
     {
-        foreach (ref d; _list)
-            renderDiagnostic(d);
+        // Cascading-error suppression.
+        //
+        // The parser has no panic-mode recovery: a single
+        // token-level mistake (unclosed quote, mismatched brace)
+        // makes every subsequent token be parsed in a broken
+        // state, so one real error becomes dozens of downstream
+        // "Expected ','" / "Invalid type" echoes. The first
+        // diagnostic is the only one worth reading; the rest
+        // bury it.
+        //
+        // Render at most MAX_RENDERED diagnostics, then report
+        // how many were suppressed. The counts in the "result:"
+        // line stay truthful — they always reflect the full
+        // list, not just what was printed.
+        enum uint MAX_RENDERED = 20;
 
         uint errors = cast(uint) _list.count!(d => d.severity == Severity.Error);
         uint warnings = cast(uint) _list.count!(d => d.severity == Severity.Warning);
+
+        uint rendered = 0;
+        uint suppressed = 0;
+        foreach (ref d; _list)
+        {
+            if (rendered < MAX_RENDERED)
+            {
+                renderDiagnostic(d);
+                rendered++;
+            }
+            else
+            {
+                suppressed++;
+            }
+        }
+
+        if (suppressed > 0)
+        {
+            writefln("... and %d more diagnostic(s) suppressed. "
+                   ~ "They are likely cascading from the first error above.",
+                   suppressed);
+            writeln();
+        }
 
         if (errors > 0 || warnings > 0)
         {
