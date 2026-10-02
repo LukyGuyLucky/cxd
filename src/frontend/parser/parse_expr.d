@@ -316,15 +316,8 @@ public:
             || k == TokenKind.RBrace;
     }
 
-    bool skipTypeTokens()
+	bool skipTypeTokens()
     {
-        // if (!p.check(TokenKind.Id))
-        // {
-        //     writeln("Skip Tokens: ", p.peek().kind);
-        //     return false;
-        // }
-        // p.advance(); // consome o nome base do tipo
-
         while (true)
         {
             if (p.isAtEnd())
@@ -336,9 +329,8 @@ public:
 
             if (p.match(TokenKind.LBracket))
             {
-                // array: [ ] | [ id ] | [ numero ]
                 if (!p.check(TokenKind.RBracket))
-                    p.advance(); // tamanho (id ou numeric) — não valida aqui, é só heurístico
+                    p.advance();
                 if (!p.match(TokenKind.RBracket))
                     return false;
                 continue;
@@ -346,15 +338,53 @@ public:
 
             if (p.match(TokenKind.LThan))
             {
-                while (!p.isAtEnd() && !p.match(TokenKind.GThan))
+                // Count angle-bracket nesting so `Foo<Bar<Baz>>` is
+                // skipped as a whole. Relying on "first '>'" breaks
+                // with nested generics.
+                int depth = 1;
+                while (!p.isAtEnd() && depth > 0)
+                {
+                    if (p.check(TokenKind.LThan))
+                        depth++;
+                    else if (p.check(TokenKind.GThan))
+                    {
+                        depth--;
+                        if (depth == 0)
+                        {
+                            p.advance();
+                            break;
+                        }
+                    }
                     p.advance();
+                }
+                if (depth != 0)
+                    return false;
                 continue;
             }
 
             if (p.match(TokenKind.LParen))
             {
-                while (!p.isAtEnd() && !p.match(TokenKind.RParen))
+                // Count paren nesting so `(double)x` and
+                // `(int(*)(char*, int))` are skipped as a whole,
+                // not stopped at the first inner ')'.
+                int depth = 1;
+                while (!p.isAtEnd() && depth > 0)
+                {
+                    if (p.check(TokenKind.LParen))
+                        depth++;
+                    else if (p.check(TokenKind.RParen))
+                    {
+                        depth--;
+                        if (depth == 0)
+                        {
+                            p.advance();
+                            break;
+                        }
+                    }
                     p.advance();
+                }
+                if (depth != 0)
+                    return false;
                 continue;
             }
 
