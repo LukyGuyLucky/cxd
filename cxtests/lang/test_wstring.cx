@@ -1,4 +1,5 @@
 include <stdio.h>
+include <wchar.h>
 
 test "wide string literal basics" {
     wchar_t* w = L"hello";
@@ -6,26 +7,50 @@ test "wide string literal basics" {
     check(w[0] == 'h');
     check(w[1] == 'e');
     check(w[4] == 'o');
-    check(w[5] == 0);      // null terminator
+    check(w[5] == 0);
 
-    // L"..." is a compile-time constant — not a malloc. No free needed.
-    // Compare against the literal directly with === (wcscmp):
     check(w === L"hello");
     check(!(w === L"world"));
 }
 
 test "wide string in expression position" {
-    // Pass directly as argument.
-    // (printf with %ls expects wchar_t*; use it here.)
+    // L"..." is a compile-time constant — not a malloc. No free needed.
     wchar_t* greeting = L"hi";
-    printf("%ls\n", greeting);
+    check(greeting[0] == 'h');
+    check(greeting[1] == 'i');
+    check(greeting[2] == 0);
 }
 
 test "mixed: char* and wchar_t* are distinct types" {
     char* narrow = "hello";
     wchar_t* wide = L"hello";
 
-    // char* === uses strcmp, wchar_t* === uses wcscmp.
-    check(narrow === "hello");
-    check(wide === L"hello");
+    check(narrow === "hello");   // uses strcmp
+    check(wide === L"hello");    // uses wcscmp
 }
+
+test "L in cx and __raw block" {
+    wchar_t[] greetings = L"Γειά σου Κόσμε!";
+    wchar_t[55] hello;
+    wchar_t[20] luck;
+
+    __raw {
+        wcscpy(hello, L"¡Hola Mundo!");
+        wcscpy(luck, L"Привет, мир!");
+    }
+
+    check(greetings === L"Γειά σου Κόσμε!");
+    check(hello === L"¡Hola Mundo!");
+    check(luck === L"Привет, мир!");
+}
+
+// Displaying wide strings on Windows via printf("%ls") requires
+// setlocale() AND a console that supports the glyphs. That is a
+// C runtime concern, not a Cx one. See:
+//
+//   setlocale(LC_ALL, "");         // before printf("%ls")
+//   _setmode(_fileno(stdout), _O_U8TEXT);  // switches stdout to UTF-16;
+//                                          // global, affects all later printf
+//
+// Both are platform-specific and outside Cx's scope. Tests should
+// not depend on console rendering — use wcscmp / character checks.
