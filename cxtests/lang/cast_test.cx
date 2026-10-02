@@ -1,0 +1,10 @@
+include <stdio.h>
+
+struct S{ long b; }
+
+test "cast of member access" {
+    S s;
+    s.b = 42;
+    double y = (double)s.b / 3;
+    printf("%f\n", y);
+}
