@@ -173,10 +173,29 @@ private:
                 resolveExprType(v, scp);
             return n.type_expr;
 
-        case NodeKind.ArrayLit:
-            foreach (v; (cast(ArrayLit) n).values)
+		case NodeKind.ArrayLit:
+        {
+            ArrayLit arr = cast(ArrayLit) n;
+            foreach (v; arr.values)
                 resolveExprType(v, scp);
+
+            // Infer element type from the first typed element, so codegen
+            // can emit C99 compound literals `(T[]){...}` in expression
+            // contexts. Without a type, ArrayLit would only be usable as
+            // an initializer.
+            if (n.type_expr is null && arr.values.length > 0)
+            {
+                foreach (v; arr.values)
+                {
+                    if (v !is null && v.type_expr !is null)
+                    {
+                        n.type_expr = new TypeExprArray(v.type_expr, "", n.pos);
+                        break;
+                    }
+                }
+            }
             return n.type_expr;
+        }
 		
 		case NodeKind.CheckExpr:
         {
@@ -542,8 +561,18 @@ private:
 
     void resolveFnDecl(FnDecl fn, string ownerName)
     {
+		if (fn.type_expr !is null && fn.type_expr.kind == TypeExprKind.Array)
+        {
+            err.error(fn.pos, format(
+                "function '%s' returns an array. C does not support returning " ~
+                "arrays by value. Return a pointer, or wrap the array in a struct.",
+                fn.name));
+            return;
+        }
+
         Scope scp = new Scope(null);
         functions[fn.name] = fn.type_expr;
+	
         if (ownerName !is null && !(fn.flags & NodeFlags.Static))
             scp.declare("self", new TypeExprPointer(*types.get(ownerName)));
         foreach (arg; fn.args)

@@ -596,7 +596,8 @@ private:
             // writeln(haveComptimeArray, " ", values);
             return format("%s", temp);
 
-        case NodeKind.ArrayLit:
+		case NodeKind.ArrayLit:
+        {
             ArrayLit arr = cast(ArrayLit) node;
             string values;
             for (uint i; i < arr.values.length; i++)
@@ -605,7 +606,18 @@ private:
                 if ((i + 1) < arr.values.length)
                     values ~= ", ";
             }
+            // In expression contexts (function args, etc.) plain `{...}`
+            // is not valid C. Use a C99 compound literal `(T[]){...}`.
+            // The initializer form `{...}` is still used when ArrayLit
+            // appears as the RHS of a VarDecl — see compileVarDecl.
+            if (node.type_expr !is null && node.type_expr.kind == TypeExprKind.Array)
+            {
+                TypeExprArray ta = cast(TypeExprArray) node.type_expr;
+                if (ta.base !is null)
+                    return format("(%s[]){%s}", ta.base.toStr(), values);
+            }
             return format("{%s}", values);
+        }
 
         case NodeKind.CastExpr:
             CastExpr n = cast(CastExpr) node;
@@ -1114,11 +1126,49 @@ private:
             && fnType !is null ? "*" : "", val), ind);
     }
 
-    string compileVarDecl(VarDecl node, uint ind)
+	string compileVarDecl(VarDecl node, uint ind)
     {
         if (node.val is null)
             return indent(format("%s;", node.type_expr.toStrVar(node.name)), ind);
-        return indent(format("%s = %s;", node.type_expr.toStrVar(node.name), compileExpr(node.val)), ind);
+
+        string rhs;
+        if (node.val.kind == NodeKind.ArrayLit
+            && node.type_expr !is null
+            && node.type_expr.kind == TypeExprKind.Array)
+        {
+            rhs = compileInitValue(node.val, node.type_expr);
+        }
+        else
+        {
+            rhs = compileExpr(node.val);
+        }
+
+        return indent(format("%s = %s;", node.type_expr.toStrVar(node.name), rhs), ind);
+    }
+
+    // Recursively emit `{...}` for array literals in initializer
+    // position, so `int a[3] = [1,2,3]` becomes `int a[3] = {1,2,3}`
+    // (C-style) rather than `int a[3] = (int[]){1,2,3}` (compound literal).
+    string compileInitValue(Node n, TypeExpr targetType)
+    {
+        if (n is null)
+            return "";
+        if (n.kind == NodeKind.ArrayLit)
+        {
+            ArrayLit arr = cast(ArrayLit) n;
+            TypeExpr elemType = targetType;
+            if (targetType !is null && targetType.kind == TypeExprKind.Array)
+                elemType = (cast(TypeExprArray) targetType).base;
+            string values;
+            for (uint i; i < arr.values.length; i++)
+            {
+                values ~= compileInitValue(arr.values[i], elemType);
+                if ((i + 1) < arr.values.length)
+                    values ~= ", ";
+            }
+            return format("{%s}", values);
+        }
+        return compileExpr(n);
     }
 
     void compileStructDecl(StructDecl node, uint ind)
