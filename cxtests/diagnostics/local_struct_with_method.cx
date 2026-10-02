@@ -1,0 +1,18 @@
+// @expect-compile-fail-contains: struct with methods defined inside a function
+//
+// A struct defined inside a function body can have fields (C allows
+// block-scope struct definitions), but cannot have methods: a method
+// is a C function, and C does not allow function definitions inside
+// function bodies. Codegen refuses with a Cx-level error and emits
+// #error so the C compiler stops too.
+
+test "struct in function with a method" {
+    struct Inner {
+        int val;
+        int get() => self.val;
+    }
+
+    Inner x;
+    x.val = 42;
+    return 0;
+}

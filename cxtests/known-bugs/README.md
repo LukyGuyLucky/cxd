@@ -28,8 +28,10 @@ the file out of here and into the appropriate suite.
 
 ## Current entries
 
-- `struct_inside_funcs.cx` — a struct defined inside a function
-  body is accepted as a *definition*, but the type name is not
-  visible at its *use site*. Codegen emits `Inner x;` in the
-  generated C, which the C compiler rejects with
-  `unknown type name 'Inner'`.
+## Current entries
+
+*None.* The previous entry — a struct defined inside a function body
+whose type name was invisible at its use site — has been fixed.
+See `cxtests/lang/inner_struct.cx` for the positive test and
+`cxtests/diagnostics/local_struct_with_method.cx` for the negative
+case (struct with methods, which C cannot express).
