@@ -1,0 +1,365 @@
+include <stdio.h>
+include <string.h>
+include <wchar.h>
+include <assert.h>
+
+// ============================================================
+// Array → Pointer: what Cx actually allows
+// ============================================================
+//
+// Two forms work. Everything else that C programmers reach for
+// does not, and the difference is not obvious from surface
+// syntax. Read this before writing (T*) or (T**) anywhere.
+//
+// ------------------------------------------------------------------
+// Form 1 — Flatten a multi-dimensional array into T*
+// ------------------------------------------------------------------
+//
+//     double[2][2] m = {{1.0, 2.0}, {3.0, 4.0}};
+//     double* p = (double*)m;          // legal
+//
+//     p[0]=1.0  p[1]=2.0  p[2]=3.0  p[3]=4.0
+//
+// The cast reinterprets the array as a contiguous run of T in
+// row-major order. Index formula:
+//
+//     m[i][j]  <=>  p[i * N + j]        (N = length of 2nd dim)
+//
+// Use this when you need a single linear walk, or when handing
+// the buffer to a C function that takes T*.
+//
+// ------------------------------------------------------------------
+// Form 2 — Let a row decay to T*
+// ------------------------------------------------------------------
+//
+//     double* row = m[1];              // legal, no cast needed
+//     row[0]=3.0  row[1]=4.0
+//
+// m[1] is the second row; it decays to a pointer to its first
+// element. This is the natural way to walk a 2D array row by row.
+// No cast, no index arithmetic, no ceremony.
+//
+// ------------------------------------------------------------------
+// The trap — never cast to T**
+// ------------------------------------------------------------------
+//
+//     double** q = (double**)m;        // UB. Do not write this.
+//
+// m decays to double(*)[2], not double**. The cast tells the
+// compiler "the first 8 bytes of m are a pointer" — but those
+// bytes are the bits of 1.0 (0x3FF0000000000000). The first
+// dereference walks to a garbage address, and the process dies
+// before the runner can print anything. See runTest in main.d:
+// it neither forwards the exit status nor the child's stderr,
+// so a segfault here reads as *silence*. The silence is the
+// symptom.
+//
+// ------------------------------------------------------------------
+// sizeof
+// ------------------------------------------------------------------
+//
+//     int[5] a;  int* p = a;
+//     sizeof(a) == 20     // array, does not decay
+//     sizeof(p) == 8      // pointer
+//
+// The moment `a` is passed as a function argument it decays, and
+// inside the callee sizeof gives you the pointer size. Size
+// information does not survive the call. Plan for it.
+//
+// ------------------------------------------------------------------
+// Not supported (do not waste time on these)
+// ------------------------------------------------------------------
+//
+//     int*   arr[5];           // array of pointers
+//     int  (*arr)[5];          // pointer to array (C syntax)
+//     int*[5] pa = &a;         // Cx-style attempt at the above
+//
+// None of these parse. If you need the semantics, build them
+// explicitly: use T* + index arithmetic, or wrap in a struct.
+// ------------------------------------------------------------------
+
+// ============================================================
+// 1. Declaration and initialization
+// ============================================================
+
+test "array_decl_init" {
+    // Both `{}` and `.{}` are accepted initializers. The `.{}`
+    // form mirrors Cx's struct-literal syntax.
+    int[5] a = {1, 2, 3, 4, 5};
+    int[5] b = .{1, 2, 3, 4, 5};
+    int[3] c;                  // uninitialized — value is indeterminate
+
+    check_eq(a[0], 1);
+    check_eq(a[4], 5);
+    check_eq(b[2], 3);
+    return 0;
+}
+
+test "array_partial_init" {
+    // Missing elements default to zero, not to garbage. This is
+    // the C rule; Cx keeps it.
+    int[5] a = {1, 2};
+
+    check_eq(a[0], 1);
+    check_eq(a[1], 2);
+    check_eq(a[2], 0);
+    check_eq(a[3], 0);
+    check_eq(a[4], 0);
+    return 0;
+}
+
+test "array_zero_init" {
+    // The idiomatic "zero the whole thing" form. Note this is
+    // NOT "one element initialized to zero and the rest garbage":
+    // braces propagate the zero.
+    int[5] a = {0};
+
+    check_eq(a[0], 0);
+    check_eq(a[4], 0);
+    return 0;
+}
+
+test "array_dot_brace" {
+    int[5] a = .{1, 2, 3, 4, 5};
+
+    check_eq(a[0], 1);
+    check_eq(a[4], 5);
+    return 0;
+}
+
+// ============================================================
+// 2. Nested arrays
+// ============================================================
+
+test "nested_array_2x2" {
+    int[2][2] m = {{1, 2}, {3, 4}};
+
+    check_eq(m[0][0], 1);
+    check_eq(m[0][1], 2);
+    check_eq(m[1][0], 3);
+    check_eq(m[1][1], 4);
+    return 0;
+}
+
+test "nested_array_3d" {
+    int[2][2][2] m = {{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
+
+    check_eq(m[0][0][0], 1);
+    check_eq(m[1][1][1], 8);
+    return 0;
+}
+
+test "nested_array_partial" {
+    // Partial init applies recursively: each inner brace zero-fills
+    // what it does not specify.
+    int[2][2] m = {{1}, {3}};
+
+    check_eq(m[0][0], 1);
+    check_eq(m[0][1], 0);
+    check_eq(m[1][0], 3);
+    check_eq(m[1][1], 0);
+    return 0;
+}
+
+// ============================================================
+// 3. Indexing and iteration
+// ============================================================
+
+test "array_index" {
+    int[5] a = {10, 20, 30, 40, 50};
+
+    check_eq(a[0], 10);
+    check_eq(a[2], 30);
+    check_eq(a[4], 50);
+    return 0;
+}
+
+test "array_for" {
+    // `int[] a` infers the length from the initializer. There is
+    // no foreach in Cx yet, so this is a plain indexed loop.
+    int[] a = {1, 2, 3, 4, 5};
+    int sum = 0;
+
+    for (int i = 0; i < 5; i++)
+        sum += a[i];
+
+    check_eq(sum, 15);
+    return 0;
+}
+
+test "array_ele_mod" {
+    // Elements are mutable through the index expression. Cx does
+    // not introduce a copy here — a[i] is an lvalue.
+    int[5] a = {1, 2, 3, 4, 5};
+
+    for (int i = 0; i < 5; i++) {
+        a[i] *= 2;
+        printf("#%i\t%d\n", i, a[i]);
+    }
+
+    check_eq(a[0], 2);
+    check_eq(a[4], 10);
+    return 0;
+}
+
+test "array_for_loop_index" {
+    // This test sums *indices*, not elements. The two happen to
+    // coincide for {1,2,3,4,5} (both equal 15), which is exactly
+    // why the distinction is worth pinning down.
+    int[5] a = {1, 2, 3, 4, 5};
+    int idxSum = 0;
+
+    for (int i = 0; i < 5; i++)
+        idxSum += i;
+
+    check_eq(idxSum, 10);      // 0+1+2+3+4
+    return 0;
+}
+
+// ============================================================
+// 4. Array as function parameter (decays to pointer)
+// ============================================================
+
+int sumArray(int[] arr, int n) {
+    int sum = 0;
+    for (int i = 0; i < n; i++)
+        sum += arr[i];
+    printf("sum=%d\n", sum);
+    
+    return sum;
+}
+
+test "array_as_param" {
+    printf("array_as_param ran\n");
+    
+    int[5] a = {1, 2, 3, 4, 5};
+
+    // Inside sumArray, `sizeof(arr)` would be pointer size, not
+    // 5 * sizeof(int). Length does not travel with the pointer,
+    // so the caller passes it explicitly.
+    int sum=sumArray(a, 5);
+    check_eq(sum,15);
+    
+    return 0;
+}
+
+// ============================================================
+// 5. sizeof semantics
+// ============================================================
+
+test "sizeof_array" {
+    int[5] a;
+
+    check_eq(sizeof(a), 5 * sizeof(int));   // 20 on ILP32/LP64
+    return 0;
+}
+
+test "sizeof_pointer" {
+    int[5] a;
+    int* p = &a[0];
+
+    check_eq(sizeof(p), sizeof(void*));
+    return 0;
+}
+
+// ============================================================
+// 6. Array → pointer conversion
+// ============================================================
+
+test "array_ptr_cast" {
+    double[2][2] m = {{1.0, 2.0}, {3.0, 4.0}};
+
+    // Form 1: flatten. Row-major layout means m[i][j] == p[i*2+j].
+    double* p = (double*)m;
+    check_eq(p[0], 1.0);
+    check_eq(p[1], 2.0);
+    check_eq(p[2], 3.0);
+    check_eq(p[3], 4.0);
+
+    // Form 2: row decay. No cast, no arithmetic.
+    double* row = m[1];
+    check_eq(row[0], 3.0);
+    check_eq(row[1], 4.0);
+
+    // Do NOT write:  double** q = (double**)m;   — see header.
+    return 0;
+}
+
+test "memcpy_array" {
+    // &dst and &src have pointer-to-array type, but memcpy takes
+    // void* so both forms are accepted. The size comes from
+    // sizeof(src), which is 5 * sizeof(int) — src is not decayed
+    // here because &src is taken, not src itself.
+    int[5] src = {1, 2, 3, 4, 5};
+    int[5] dst;
+    memcpy(&dst, &src, sizeof(src));
+
+    check_eq(dst[0], 1);
+    check_eq(dst[4], 5);
+    return 0;
+}
+
+// ============================================================
+// 7. Char arrays (string literals)
+// ============================================================
+
+test "char_array_init" {
+    // "hello" is 5 chars + implicit '\0'. The array must be at
+    // least 6 to hold it.
+    char[6] s = "hello";
+
+    check_eq(s[0], 'h');
+    check_eq(s[4], 'o');
+    check_eq(s[5], '\0');
+    return 0;
+}
+
+test "char_array_strlen" {
+    char[6] s = "hello";
+
+    check_eq(strlen(s), 5);
+    check_eq(sizeof(s), 6);
+    return 0;
+}
+
+test "char_array_oversized" {
+    // The array is larger than the literal; the extra bytes are
+    // zero-filled, and sizeof reflects the declared size, not the
+    // string length.
+    char[10] s = "hello";
+
+    check_eq(strlen(s), 5);
+    check_eq(sizeof(s), 10);
+    return 0;
+}
+
+// ============================================================
+// 8. Element pointers
+// ============================================================
+
+test "array_elem_ptr" {
+    int[5] a = {1, 2, 3, 4, 5};
+    int* p = &a[0];
+
+    check_eq(*p, 1);
+    p++;
+    check_eq(*p, 2);
+    check_eq(*(p + 2), 4);
+    return 0;
+}
+
+// ============================================================
+// 9. Row pointers on 2D arrays
+// ============================================================
+
+test "array_2d_row_ptr" {
+    int[3][3] m = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+
+    // m[0] already has type int[3], which decays to int*. The
+    // explicit (int*) is redundant but harmless.
+    int* row0 = (int*)m[0];
+
+    check_eq(row0[0], 1);
+    check_eq(row0[2], 3);
+    return 0;
+}
