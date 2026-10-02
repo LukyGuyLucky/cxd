@@ -61,13 +61,13 @@ int test_wmain(int argc,char*[] argv){
     HANDLE std=GetStdHandle(STD_OUTPUT_HANDLE);
     
     if(std==INVALID_HANDLE_VALUE){
-        wprintf(L("Cannot retrieve standard output handle\n (%d)"),GetLastError());
+        wprintf(L"Cannot retrieve standard output handle\n (%d)",GetLastError());
     }
     if(!argv[1]) argv[1]="Welcome to Cx!";
     if(argv[1]){
 	
         DWORD written;
-	WriteConsoleW(std, L(argv[1]), wcslen(L(argv[1])), &written, NULL); 
+	WriteConsoleW(std, to_wstr(argv[1]), wcslen(to_wstr(argv[1])), &written, NULL); 
     }
     //CloseHandle(std);
 
@@ -83,18 +83,18 @@ void test_sdk1(){
     int r=GetComputerNameW(computerName,&size);
     computerName[size]='\0';
     if(r==0){
-        wprintf(L("Failed to get computer name %ld\n"),GetLastError());
+        wprintf(L"Failed to get computer name %ld\n",GetLastError());
         return;    
     }
 
-    wprintf(L("wide testΓειά σου Κόσμε!\n"));
+    wprintf(L"wide testΓειά σου Κόσμε!\n");
 
-    wprintf(L("计算机名称：%ls\n"),computerName);
+    wprintf(L"计算机名称：%ls\n",computerName);
 
     DWORD written;
-    WriteConsoleW(std,L("计算机名称："),6,&written,NULL);
+    WriteConsoleW(std,L"计算机名称：",6,&written,NULL);
     WriteConsoleW(std,computerName,wcslen(computerName),&written,NULL);
-    WriteConsoleW(std,L("\n"),1,&written,NULL);
+    WriteConsoleW(std,L"\n",1,&written,NULL);
 }
 void test_username(){
 
@@ -102,30 +102,30 @@ void test_username(){
     DWORD len=sizeof(username)/sizeof(wchar_t);
     int r=GetUserNameW(username,&len);
     if(r==0){
-        wprintf(L("Failed to get username %ld\n"),GetLastError());
+        wprintf(L"Failed to get username %ld\n",GetLastError());
         return;    
     }    
-    wprintf(L("User name: %ls\n"),username);
+    wprintf(L"User name: %ls\n",username);
 }
 
 void test_current_directory(){
     wchar_t[MAX_LEN] buf;    
-    DWORD r=SetCurrentDirectoryW(L("."));
+    DWORD r=SetCurrentDirectoryW(L".");
 
     if r==0{
-        wprintf(L("SetCurrentDirectoryW() failed (%ld)\n"),GetLastError());
+        wprintf(L"SetCurrentDirectoryW() failed (%ld)\n",GetLastError());
         return;    
     }
     r=GetCurrentDirectoryW(bufsize,buf);
     if(r==0){
-        wprintf(L("GetCurrentDirectoryW() failed (%ld)\n"),GetLastError());
+        wprintf(L"GetCurrentDirectoryW() failed (%ld)\n",GetLastError());
         return;    
     }
     if(r>bufsize){
-        wprintf(L("Buffer too small,needs %d characters\n"),r);
+        wprintf(L"Buffer too small,needs %d characters\n",r);
         return;    
     }
-    wprintf(L("当前目录： %ls\n"),buf);
+    wprintf(L"当前目录： %ls\n",buf);
 }
 void test_os_memory(){
     MEMORYSTATUSEX mem = {0};
@@ -135,16 +135,16 @@ void test_os_memory(){
     int r = GlobalMemoryStatusEx(&mem);
 
     if (r == 0) {
-        wprintf(L("Failed to memory status %ld"), GetLastError());
+        wprintf(L"Failed to memory status %ld", GetLastError());
         return ;
     }
 
-    wprintf(L("在用内存:\t%ld%%\n"), mem.dwMemoryLoad);
-	wprintf(L("总物理内存:\t%.3f GB\n"), (double)mem.ullTotalPhys / 1024/1024/1024);
-	wprintf(L("可用物理内存:\t%.3f GB\n"), (double)mem.ullAvailPhys / 1024/1024/1024);
-	wprintf(L("提交限制:\t%.3f GB\n"), (double)mem.ullTotalPageFile / 1024/1024/1024);
-	wprintf(L("可用提交:\t%.3f GB\n"), (double)mem.ullAvailPageFile / 1024/1024/1024);
-	wprintf(L("虚拟地址空间:\t%.3f TB\n"), (double)mem.ullTotalVirtual / 1024/1024/1024/1024);
+    wprintf(L"在用内存:\t%ld%%\n", mem.dwMemoryLoad);
+	wprintf(L"总物理内存:\t%.3f GB\n", (double)mem.ullTotalPhys / 1024/1024/1024);
+	wprintf(L"可用物理内存:\t%.3f GB\n", (double)mem.ullAvailPhys / 1024/1024/1024);
+	wprintf(L"提交限制:\t%.3f GB\n", (double)mem.ullTotalPageFile / 1024/1024/1024);
+	wprintf(L"可用提交:\t%.3f GB\n", (double)mem.ullAvailPageFile / 1024/1024/1024);
+	wprintf(L"虚拟地址空间:\t%.3f TB\n", (double)mem.ullTotalVirtual / 1024/1024/1024/1024);
 	}
 
 void test_document_dir(){
@@ -153,7 +153,7 @@ void test_document_dir(){
     
     HRESULT hr=SHGetKnownFolderPath(&FOLDERID_Documents,0,NULL,&path);
     if(SUCCEEDED(hr)){
-        wprintf(L("%ls\n"),path);    
+        wprintf(L"%ls\n",path);    
     }
     CoTaskMemFree(path);
 }
@@ -163,28 +163,28 @@ void test_get_drivers(){
     DWORD r=GetLogicalDriveStringsW(MAX_PATH,logicalDrivers);
     
     if(r==0){
-        wprintf(L("Failed to get drive names %ld\n"),GetLastError());
+        wprintf(L"Failed to get drive names %ld\n",GetLastError());
         return;    
     }
     if(r>0 && r<=MAX_PATH){
         wchar_t* singleDriver=logicalDrivers;
         while(*singleDriver){
-            wprintf(L("%ls\n"),singleDriver);
+            wprintf(L"%ls\n",singleDriver);
             singleDriver+=wcslen(singleDriver)+1;    
         }    
     }
 }
 void test_free_disk(){
     u64 freeCall,total,free;
-    int r=GetDiskFreeSpaceExW(L("c:\\"),(PULARGE_INTEGER)&freeCall,
+    int r=GetDiskFreeSpaceExW(L"c:\\",(PULARGE_INTEGER)&freeCall,
         (PULARGE_INTEGER)&total,(PULARGE_INTEGER)&free);
     if(r==0){
-        wprintf(L("Failed to get free disk space %ld\n"),GetLastError());
+        wprintf(L"Failed to get free disk space %ld\n",GetLastError());
         return;    
     }    
-    wprintf(L("可用空间：\t\t%I64u GB\n"),freeCall/(1024*1024*1024));
-    wprintf(L("总空间：\t\t%I64u GB\n"),total/(1024*1024*1024));
-    wprintf(L("空闲空间：\t\t%I64u GB\n"),free/(1024*1024*1024));
+    wprintf(L"可用空间：\t\t%I64u GB\n",freeCall/(1024*1024*1024));
+    wprintf(L"总空间：\t\t%I64u GB\n",total/(1024*1024*1024));
+    wprintf(L"空闲空间：\t\t%I64u GB\n",free/(1024*1024*1024));
 }
 void test_cpu_speed(){
     DWORD BufSize=MAX_PATH;
@@ -192,21 +192,21 @@ void test_cpu_speed(){
     HKEY key;
     
     long r=RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-        L("HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"),
+        L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
         0,KEY_READ,&key);
     if(r!=ERROR_SUCCESS){
-        wprintf(L("RegOpenKeyExW() failed %ld\n"),GetLastError());
+        wprintf(L"RegOpenKeyExW() failed %ld\n",GetLastError());
         return;    
     }
-    r=RegQueryValueExW(key,L("~MHz"),NULL,NULL,(LPBYTE)&mhz,&BufSize);
+    r=RegQueryValueExW(key,L"~MHz",NULL,NULL,(LPBYTE)&mhz,&BufSize);
     if(r!=ERROR_SUCCESS){
-        wprintf(L("RegQueryValueExW() failed %ld\n"),GetLastError());
+        wprintf(L"RegQueryValueExW() failed %ld\n",GetLastError());
         return;    
     }
-    wprintf(L("CPU 速度：\t\t%lu MHz\n"),mhz);
+    wprintf(L"CPU 速度：\t\t%lu MHz\n",mhz);
     r=RegCloseKey(key);
     if(r!=ERROR_SUCCESS){
-        wprintf(L("Failed to close registry handler %ld\n"),GetLastError());
+        wprintf(L"Failed to close registry handler %ld\n",GetLastError());
         return;    
     }
 }
@@ -219,64 +219,64 @@ void test_c_defines(){
     assert(x==10);
 
     cx_log(42,336);
-    LPWSTR msg=L("Hello, world!\n"
+    LPWSTR msg=L"Hello, world!\n"
                 "¡Hola Mundo!\n"
                 "Γειά σου Κόσμε!\n"
                 "Привет, мир!\n"
                 "こんにちは世界！\n"
                 "你好世界！\n"
                 "नमस्ते दुनिया!\n"
-                "👋🌎!");
-    MessageBoxW(NULL,msg,L("नमस्ते दुनिया!👋🌎!"),MB_OK|MB_ICONINFORMATION);
+                "👋🌎!";
+    MessageBoxW(NULL,msg,L"नमस्ते दुनिया!👋🌎!",MB_OK|MB_ICONINFORMATION);
 }
 void test_ansic_functions(){
-    PWSTR str1=L("There are 15 pines");
-    wprintf(L("The length of the string is %lld characters\n"),wcslen(str1));    
+    PWSTR str1=L"There are 15 pines";
+    wprintf(L"The length of the string is %lld characters\n",wcslen(str1));    
 
     wchar_t[20] buf;
-    wcscpy(buf,L("Wuthering"));
-    wcscat(buf,L("heights\n"));
+    wcscpy(buf,L"Wuthering");
+    wcscat(buf,L"heights\n");
     wprintf(buf);
 
-    if(wcscmp(L("rain"),L("rainy"))==STR_EQUAL){
-        wprintf(L("rain and rainy are equal strings\n"));    
+    if(wcscmp(L"rain",L"rainy")==STR_EQUAL){
+        wprintf(L"rain and rainy are equal strings\n");    
     }else{
-        wprintf(L("rain and rainy are not equal strings\n"));    
+        wprintf(L"rain and rainy are not equal strings\n");    
     }
 }
 void test_security_enhanced(){
-    PWSTR str1=L("There are 15 pines");
+    PWSTR str1=L"There are 15 pines";
     const int bufLen=50;
     const int maxChars=50;
     size_t count=wcsnlen_s(str1,maxChars);
     
-    wprintf(L("The length of the string is %zu characters\n"),count);
+    wprintf(L"The length of the string is %zu characters\n",count);
 
     wchar_t[bufLen] buf;
-    int r=wcscpy_s(buf,bufLen,L("Wuthering"));
+    int r=wcscpy_s(buf,bufLen,L"Wuthering");
     if(r!=0){
-        wprintf(L("wcscpy_s() failed %ld\n"),r);    
+        wprintf(L"wcscpy_s() failed %ld\n",r);    
     }
-    r=wcscat_s(buf,bufLen,L("heights\n"));
+    r=wcscat_s(buf,bufLen,L"heights\n");
     if(r!=0){
-        wprintf(L("wcscat_s() failed %ld\n"),r);    
+        wprintf(L"wcscat_s() failed %ld\n",r);    
     }
     wprintf_s(buf);
 }
 void test_winapi_string_length(){
     char* name="Jane";
-    wchar_t* town=L("Bratislava");
+    wchar_t* town=L"Bratislava";
     
-    wprintf(L("The length of the name string is %d\n"),lstrlenA(name));
-    wprintf(L("The town string length is %d\n"),lstrlenW(town));
+    wprintf(L"The length of the name string is %d\n",lstrlenA(name));
+    wprintf(L"The town string length is %d\n",lstrlenW(town));
 
-    wchar_t* s1=L("ZetCode, ");
-    wchar_t* s2=L("tutorials ");
-    wchar_t* s3=L("for ");
-    wchar_t* s4=L("programmers.\n");
+    wchar_t* s1=L"ZetCode, ";
+    wchar_t* s2=L"tutorials ";
+    wchar_t* s3=L"for ";
+    wchar_t* s4=L"programmers.\n";
 
-    wchar_t* s0=L("string");
-    wprintf(L("length of s0 is %ld\n"),lstrlenW(s0));
+    wchar_t* s0=L"string";
+    wprintf(L"length of s0 is %ld\n",lstrlenW(s0));
 
     int len=lstrlenW(s1)+lstrlenW(s2)+lstrlenW(s3)+lstrlenW(s4)+1;
     wchar_t[len] buf;
@@ -290,41 +290,41 @@ void test_winapi_string_length(){
 
     wchar_t[7] str5={'E','u','r','o','p','e','\0'};
     CharLowerW(str5);
-    wprintf(L("str5 to lower: %ls\n"),str5);
+    wprintf(L"str5 to lower: %ls\n",str5);
 
     CharUpperW(str5);
-    wprintf(L("str5 to upper: %ls\n"),str5);
-    wprintf(L("length of str5 is %ld\n"),lstrlenW(str5));
+    wprintf(L"str5 to upper: %ls\n",str5);
+    wprintf(L"length of str5 is %ld\n",lstrlenW(str5));
 
-    const wchar_t* cmp1=L("strong");
-    const wchar_t* cmp2=L("strong");
+    const wchar_t* cmp1=L"strong";
+    const wchar_t* cmp2=L"strong";
     if(lstrcmpW(cmp1,cmp2)==STR_EQUAL){
-        wprintf(L("%ls and %ls are equal\n"),cmp1,cmp2);    
+        wprintf(L"%ls and %ls are equal\n",cmp1,cmp2);    
     }else{
-        wprintf(L("%ls and %ls are not equal\n"),s1,s2);    
+        wprintf(L"%ls and %ls are not equal\n",s1,s2);    
     }
-    wprintf(L("When applying case insensitive comparision:\n"));
+    wprintf(L"When applying case insensitive comparision:\n");
     if(lstrcmpiW(cmp1,cmp2)==STR_EQUAL){
-        wprintf(L("%ls and %ls are equal\n"),cmp1,cmp2);    
+        wprintf(L"%ls and %ls are equal\n",cmp1,cmp2);    
     }else{
-        wprintf(L("%ls and %ls are not equal\n"));    
+        wprintf(L"%ls and %ls are not equal\n");    
     }
 
    
-    wprintf(L("cmp1==cmp2 result %ls\n"),cmp1==cmp2 ? L("equla"):L("Not equal"));    
-    wprintf(L("cmp1===cmp2 result %ls\n"),cmp1===cmp2 ? L("equla"):L("Not equal"));        
+    wprintf(L"cmp1==cmp2 result %ls\n",cmp1==cmp2 ? L"equla":L"Not equal");    
+    wprintf(L"cmp1===cmp2 result %ls\n",cmp1===cmp2 ? L"equla":L"Not equal");        
 
     char* ccmp1="strong";
     char* ccmp2="strong";
     
-    wprintf(L("ccmp1==ccmp2 result %ls\n"),ccmp1==ccmp2 ? L("equla"):L("Not equal"));    
-    wprintf(L("ccmp1===ccmp2 result %ls\n"),ccmp1===ccmp2 ? L("equla"):L("Not equal"));        
+    wprintf(L"ccmp1==ccmp2 result %ls\n",ccmp1==ccmp2 ? L"equla":L"Not equal");    
+    wprintf(L"ccmp1===ccmp2 result %ls\n",ccmp1===ccmp2 ? L"equla":L"Not equal");        
 
     
 }
 
 void test_wstr_merge() {
-    wprintf(L("test_wstr_merge()\n"));
+    wprintf(L"test_wstr_merge()\n");
 
     const wchar_t* cmp1=0;
     const wchar_t* cmp2=0;
@@ -334,16 +334,16 @@ void test_wstr_merge() {
         cmp2 = L"strong";
     }
 
-    wprintf(L("cmp1 == cmp2: %ls\n"), cmp1 == cmp2 ? L("equal") : L("not equal"));
-    wprintf(L("cmp1 === cmp2: %ls\n"), cmp1 === cmp2 ? L("equal") : L("not equal"));
+    wprintf(L"cmp1 == cmp2: %ls\n", cmp1 == cmp2 ? L"equal" : L"not equal");
+    wprintf(L"cmp1 === cmp2: %ls\n", cmp1 === cmp2 ? L"equal" : L"not equal");
 
     __raw {
-        wprintf(L("cmp1 addr: %p\n"), (void*)cmp1);
-        wprintf(L("cmp2 addr: %p\n"), (void*)cmp2);
+        wprintf(L"cmp1 addr: %p\n", (void*)cmp1);
+        wprintf(L"cmp2 addr: %p\n", (void*)cmp2);
     }
 }
 void test_wstr_dup() {
-    wprintf(L("test_wstr_dup()\n"));
+    wprintf(L"test_wstr_dup()\n");
 
     wchar_t[16] buf1;
     wchar_t[16] buf2;
@@ -351,20 +351,20 @@ void test_wstr_dup() {
     __raw {
         wcscpy(buf1, L"strong");
         wcscpy(buf2, L"strong");
-        wprintf(L("addr1: %p, addr2: %p\n"), (void*)buf1, (void*)buf2);
+        wprintf(L"addr1: %p, addr2: %p\n", (void*)buf1, (void*)buf2);
     }
 
-    wprintf(L("buf1 == buf2: %ls\n"), buf1 == buf2 ? L("equal") : L("not equal"));
-    wprintf(L("buf1 === buf2: %ls\n"), buf1 === buf2 ? L("equal") : L("not equal"));
+    wprintf(L"buf1 == buf2: %ls\n", buf1 == buf2 ? L"equal" : L"not equal");
+    wprintf(L"buf1 === buf2: %ls\n", buf1 === buf2 ? L"equal" : L"not equal");
 }
 
 alias wstring = wchar_t*
 void test_alias_wstr() {
     
-    wprintf(L("\n\ntest_alias_wstr()\n"));
-    wstring a = L("strong");
-    wstring b = L("strong");
-    wprintf(L("a === b: %ls\n\n"), a === b ? L("equal") : L("not equal"));
+    wprintf(L"\n\ntest_alias_wstr()\n");
+    wstring a = L"strong";
+    wstring b = L"strong";
+    wprintf(L"a === b: %ls\n\n", a === b ? L"equal" : L"not equal");
 }
 
 void test_string_fill_buffer(){
@@ -372,18 +372,17 @@ void test_string_fill_buffer(){
     wchar_t[128] buf;
     
     GetLocalTime(&st);
-    wsprintfW(buf,L("Today is %lu.%lu.%lu\n"),st.wYear,st.wMonth,st.wDay);
+    wsprintfW(buf,L"Today is %lu.%lu.%lu\n",st.wYear,st.wMonth,st.wDay);
     wprintf(buf);
 }
 //alias wchar_t=ushort
 void test_string_types(){
-    wprintf(L("test_string_types()\n"));
+    wprintf(L"test_string_types()\n");
    
     char[23] str1 = "7 white, 3 red roses.\n";
     wchar_t[23] str2;
-    wcscpy(str2, L("7 white, 3 red roses.\n"));
-    wchar_t* str3 = L("7 white, 3 red roses.\n");
-    wcscpy(str3, L("7 white, 3 red roses.\n"));
+    wcscpy(str2, L"7 white, 3 red roses.\n");
+    wchar_t[64] str3=L"7 white, 3 red roses.\n";
     
     int alphas=0;
     int digits=0;
@@ -398,7 +397,7 @@ void test_string_types(){
     bool rv=GetStringTypeW(CT_CTYPE1,str2,size,types);
 
     if(!rv){
-        wprintf(L("Could not get character types (%ld)"),GetLastError());
+        wprintf(L"Could not get character types (%ld)",GetLastError());
         return;    
     }
     for(int i=0;i<size;i++){
@@ -408,9 +407,9 @@ void test_string_types(){
         if(types[i] & C1_PUNCT) puncts++;
         if(types[i] & C1_CNTRL) contrs++;
     }
-    wprintf(L("Here are %ld letter(s),%ld ditit(s), "
+    wprintf(L"Here are %ld letter(s),%ld ditit(s), "
         "%ld space(s), %ld puctuation character(s), "
-        "and %ld control character(s)\n"),
+        "and %ld control character(s)\n",
         alphas,digits,spaces,puncts,contrs);
 }
 
@@ -421,13 +420,13 @@ void test_issues(){
     test_issue4();
 }
 void test_issue1(){
-    wprintf(L("test_issue1\n"));
+    wprintf(L"test_issue1\n");
     wchar_t[23] str;
 }
 void test_issue2(){
-    wprintf(L("test_issue2\n"));
+    wprintf(L"test_issue2\n");
     wchar_t[23] str;
-    wcscpy(str,L("7 white, 3 red roses.\n"));
+    wcscpy(str,L"7 white, 3 red roses.\n");
 }
 void test_issue3(){
     
@@ -436,47 +435,47 @@ void test_issue4(){
     
 }
 void test_shell_convert(){
-    wchar_t* str1=L("512");
-    wchar_t* str2=L("0xAB12");
+    wchar_t* str1=L"512";
+    wchar_t* str2=L"0xAB12";
     int n=0;
 
     bool r=StrToIntExW(str1,STIF_DEFAULT,&n);
 
     if(r){
-        wprintf(L("The value is %d\n"),n);    
+        wprintf(L"The value is %d\n",n);    
     }else{
-        wprintf(L("The first conversion failed\n"));
+        wprintf(L"The first conversion failed\n");
         return;    
     }
     r=StrToIntExW(str2,STIF_SUPPORT_HEX,&n);
 
     if(r){
-        wprintf(L("The value is %d\n"),n);    
+        wprintf(L"The value is %d\n",n);    
     }else{
-        wprintf(L("The second conversion failed\n"));    
+        wprintf(L"The second conversion failed\n");    
     }
 }
 void test_shell_search(){
-    wchar_t* buf=L("Today is a rainy day.");
-    wchar_t* search_word=L("rainy");
+    wchar_t* buf=L"Today is a rainy day.";
+    wchar_t* search_word=L"rainy";
     int len=wcslen(search_word);
 
     LPWSTR pr=StrStrW(buf,search_word);
 
     if(!pr){
-        wprintf(L("No match\n"),buf);    
+        wprintf(L"No match\n",buf);    
     }else{
-        wprintf(L("%.*ls is found\n"),len,pr);    
+        wprintf(L"%.*ls is found\n",len,pr);    
     }
 }
 
 void test_safe_length(){
     //wchar_t[8] str;
-    //wcscpy(str,L("ZetCode"));
+    //wcscpy(str,L"ZetCode");
     //size_t size=sizeof(str);
     // or below,changed a lot
 
-    wchar_t* str=L("ZetCode");
+    wchar_t* str=L"ZetCode";
     size_t target_size=0;
     
     size_t cbSize=(wcslen(str)+1)*sizeof(wchar_t);
@@ -485,29 +484,29 @@ void test_safe_length(){
     HRESULT r=StringCbLengthW(str,cbSize,&target_size);
 
     if(SUCCEEDED(r)){
-        wprintf(L("The string has %lld bytes\n"),target_size);    
+        wprintf(L"The string has %lld bytes\n",target_size);    
     }else{
-        wprintf(L("StringCbLengthW() failed: 0x%08X\n"),r);
+        wprintf(L"StringCbLengthW() failed: 0x%08X\n",r);
         //return;    
     }
 
     r=StringCchLengthW(str,cchSize,&target_size);
     if(SUCCEEDED(r)){
-        wprintf(L("The string has %lld characters\n"),target_size);    
+        wprintf(L"The string has %lld characters\n",target_size);    
     }else{
-        wprintf(L("StringCchLengthW() failed: 0x%08X\n"));
+        wprintf(L"StringCchLengthW() failed: 0x%08X\n");
         //return;    
     }
 }
 
 void test_safe_gets(){
     wchar_t[MAX_LEN] buf;
-    wprintf(L("Please enter something:"));
+    wprintf(L"Please enter something:");
     HRESULT r=StringCchGetsW(buf,ARRAYSIZE(buf));
 
     if(SUCCEEDED(r)){
-        wprintf(L("You have entered: %ls\n"),buf);    
+        wprintf(L"You have entered: %ls\n",buf);    
     }else{
-        wprintf(L("StringCchGets() failed\n"));    
+        wprintf(L"StringCchGets() failed\n");    
     }
 }
