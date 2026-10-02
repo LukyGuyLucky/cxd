@@ -420,7 +420,20 @@ public:
 
             if (ch == ' ' || ch == '\r' || ch == '\t')
                 continue;
-
+			
+			// Wide string literal: L"..." must be caught BEFORE the
+            // isAlpha branch — otherwise `L` is read as an identifier
+            // and the following `"..."` becomes a separate token.
+            if (ch == 'L' && !isAtEnd() && peek() == '"')
+            {
+                advance();  // consume the opening quote
+                uint start_o = loffset;
+                uint start_l = line;
+                string s = lexString(start_o, start_l);
+                pushToken(Token.tk_string(TokenKind.WideString, s, getPos(start_o, start_l)));
+                continue;
+            }
+			
             if (isAlpha(ch))
             {
                 uint start_o = loffset;

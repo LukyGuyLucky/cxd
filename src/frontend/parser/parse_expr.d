@@ -45,8 +45,11 @@ public:
         Token tk = p.advance();
         switch (tk.kind)
         {
-        case TokenKind.String:
+		case TokenKind.String:
             return new StringLit(tk.s, tk.pos);
+
+        case TokenKind.WideString:
+            return new StringLit(tk.s, tk.pos, true);
 
         case TokenKind.Const:
             Node n = parse();

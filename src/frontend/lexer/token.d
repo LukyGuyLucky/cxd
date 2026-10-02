@@ -59,6 +59,7 @@ enum TokenKind : ubyte
     // literals
     Id,
     String,
+    WideString,
     Char,
     Numeric,
     UNumeric,

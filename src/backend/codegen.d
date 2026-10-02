@@ -507,8 +507,19 @@ private:
             if (op == "*") checkNullPtrFn(val, un.pos);
             return format("%s%s", un.post ? val : op, un.post ? op : val);
 
-        case NodeKind.StringLit:
-            return format("\"%s\"", (cast(StringLit) node).val);
+		case NodeKind.StringLit:
+        {
+            StringLit s = cast(StringLit) node;
+            // wcscmp needs <wchar.h>. Inject it once if any wide string
+            // literal appears — this covers the `===` codegen path too,
+            // which emits wcscmp for wchar_t* operands.
+            if (s.isWide && "include <wchar.h>" !in includes)
+            {
+                includes["include <wchar.h>"] = true;
+                header ~= "#include <wchar.h>";
+            }
+            return format("%s\"%s\"", s.isWide ? "L" : "", s.val);
+        }
 
         case NodeKind.CharLit:
             return format("'%s'", escapeChar((cast(CharLit) node).val));

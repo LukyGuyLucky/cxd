@@ -1,0 +1,31 @@
+include <stdio.h>
+
+test "wide string literal basics" {
+    wchar_t* w = L"hello";
+
+    check(w[0] == 'h');
+    check(w[1] == 'e');
+    check(w[4] == 'o');
+    check(w[5] == 0);      // null terminator
+
+    // L"..." is a compile-time constant — not a malloc. No free needed.
+    // Compare against the literal directly with === (wcscmp):
+    check(w === L"hello");
+    check(!(w === L"world"));
+}
+
+test "wide string in expression position" {
+    // Pass directly as argument.
+    // (printf with %ls expects wchar_t*; use it here.)
+    wchar_t* greeting = L"hi";
+    printf("%ls\n", greeting);
+}
+
+test "mixed: char* and wchar_t* are distinct types" {
+    char* narrow = "hello";
+    wchar_t* wide = L"hello";
+
+    // char* === uses strcmp, wchar_t* === uses wcscmp.
+    check(narrow === "hello");
+    check(wide === L"hello");
+}

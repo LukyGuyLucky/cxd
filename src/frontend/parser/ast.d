@@ -344,24 +344,25 @@ class NullLit : Node
 class StringLit : Node
 {
     string val;
+    bool isWide;
 
-    this(string val, Position pos)
+    this(string val, Position pos, bool isWide = false)
     {
         super(NodeKind.StringLit, pos);
-        this.type_expr = new TypeExprPointer(new TypeExprNamed("char", pos), pos);
+        this.isWide = isWide;
+        auto base = new TypeExprNamed(isWide ? "wchar_t" : "char", pos);
+        this.type_expr = new TypeExprPointer(base, pos);
         this.val = val;
     }
 
     override void print(uint indent)
     {
-        iprint(indent, format(`StringLit "%s"`, val));
+        iprint(indent, format(`StringLit%s "%s"`, isWide ? " (wide)" : "", val));
     }
 
     override StringLit dup()
     {
-        // string em D é imutável (immutable(char)[]), então val ~ ""
-        // não é necessário para "clonar" o conteúdo, mas mantemos explícito.
-        auto n = new StringLit(val, pos);
+        auto n = new StringLit(val, pos, isWide);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;
