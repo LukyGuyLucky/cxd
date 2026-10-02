@@ -1,0 +1,19 @@
+include <stdio.h>
+include <wchar.h>
+
+// __raw can declare file-level C constructs that Cx code can then use.
+// This is how you bring `typedef struct { ... } Name;` into Cx.
+__raw { typedef struct { int x; int y; } Point; }
+
+test "wprintf with wide literal" {
+    wprintf(L"hello\n");
+    wprintf(L"%ls\n", L"world");
+}
+
+test "struct declared in __raw is visible in Cx" {
+    Point p = {0};
+    p.x = 3;
+    p.y = 4;
+    check_eq(p.x, 3);
+    check_eq(p.y, 4);
+}
