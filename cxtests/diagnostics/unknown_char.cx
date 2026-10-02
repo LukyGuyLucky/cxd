@@ -1,0 +1,10 @@
+// @expect-errors: 1
+// @expect-first-at: 8:15
+
+include <stdio.h>
+
+test "unknown char" {
+    int a = 5;
+    int b = a $ 1;
+    printf("%d\n", b);
+}

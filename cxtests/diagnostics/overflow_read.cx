@@ -1,0 +1,46 @@
+// Probe: out-of-bounds array read via a wrong length argument.
+//
+// sumArray(a, 15) is called with a 5-element array. The loop
+// reads a[5..14], which is UB. Historically this file was used
+// to try to reproduce a compiler panic / out-of-bounds crash.
+// Current behavior (Cx 0.2.3-win64+): no compiler panic; the
+// runtime read returns stack garbage, check_eq fails, and the
+// runner exits with status 1. This is the expected outcome now:
+// an out-of-bounds read is UB and Cx does not detect it.
+//
+// @expect-runtime-fail: 1
+
+
+include <stdio.h>
+
+const char* msg="testing panic/out of bounds issue\n";
+
+int main(){
+
+	printf(msg);
+	
+	return 0;
+}
+
+int sumArray(int[] arr, int n) {
+    int sum = 0;
+    for (int i = 0; i < n; i++)
+        sum += arr[i];
+    printf("sum=%d\n", sum);
+    
+    return sum;
+}
+
+test "array_as_param" {
+    printf("array_as_param ran\n");
+    
+    int[5] a = {1, 2, 3, 4, 5};
+
+    // Inside sumArray, `sizeof(arr)` would be pointer size, not
+    // 5 * sizeof(int). Length does not travel with the pointer,
+    // so the caller passes it explicitly.
+    int sum=sumArray(a, 15);
+    check_eq(sum,15);
+    
+    return 0;
+}
