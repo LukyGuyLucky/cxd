@@ -1,6 +1,7 @@
 include <stdio.h>
 include "handle_name_conflict.h"
-include "uconsole.h"  // test case ,including more window related headers
+
+
 __raw{  
 	//we've turn off the definitions of MB_* and Message* in handle_name_conflict.h
 	extern int MessageBoxW(HWND,LPWSTR,LPWSTR,UINT);
@@ -17,7 +18,7 @@ struct Color {
 const Color green=.{r=0,g=255,b=0,a=255};
 int main(){
 	printf("MB_OK=%X\nMB_ICONINFORMATION=%X\n",MB_OK,MB_ICONINFORMATION);//from here I got the two #defines' value
-	MessageBoxW(NULL,L("Γειά σου Κόσμε!Привет, мир!"),L("Γειά σου Κόσμε!"),MB_OK|MB_ICONINFORMATION);
+	MessageBoxW(NULL,L"Γειά σου Κόσμε!Привет, мир!",L"Γειά σου Κόσμε!",MB_OK|MB_ICONINFORMATION);
     test1();
 
     return 0;

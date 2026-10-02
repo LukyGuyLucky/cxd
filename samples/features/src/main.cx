@@ -7,8 +7,6 @@ include <string>
 include <vector>
 import std.string;
 
-include "uconsole.h"
-
 import subs;
 import sons.kids;
 import neighbors.friends;
@@ -37,15 +35,15 @@ void features(){
     printf("count_leading_zeros(7)=%u\n\n",count_leading_zeros(7));
 
 
-    MessageBoxW(NULL,L("Hello, world! \
+    MessageBoxW(NULL,L"Hello, world! \
         ¡Hola Mundo! \
         Γειά σου Κόσμε! \
         Привет, мир! \
         こんにちは世界！ \
         你好世界！ \
         नमस्ते दुनिया! \
-        👋🌎!"),
-        L("नमस्ते दुनिया!"),
+        👋🌎!",
+        L"नमस्ते दुनिया!",
     0);
 
     const char* greetings="Γειά σου Κόσμε!";
