@@ -14,6 +14,8 @@ enum IDM {
 }
 
 test "enum explicit value" {
+    IDM open = .FILE_OPEN;
+    check_eq(open, 2);          
     check_eq(IDM.FILE_NEW, 1);
     check_eq(IDM.FILE_OPEN, 2);
     check_eq(IDM.FILE_QUIT, 3);

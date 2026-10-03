@@ -1,0 +1,39 @@
+include <stdio.h>
+
+// MANUAL PROBE — not part of `cx test`.
+//
+// Purpose: inspect the generated C (and the linked binary) for the
+// enum `_ids[]` table when nothing in the program calls `.id`.
+//
+// Verify:
+//     cx enum_ids_probe.cx --opt -o enum_ids_probe.exe
+//     nm enum_ids_probe.exe | findstr "_ids"
+//
+// Expected: no output. The table is `static const char* ...`, so
+// gcc eliminates it when no `.id` call references it.
+//
+// This is not a `test "..."` block because "table was optimized
+// away" is not expressible as a `check_eq` at runtime — it must be
+// inspected in the binary. See docs/semantics/enum-ids.md.
+
+enum IDM {
+    FILE_NEW  = 1,
+    FILE_OPEN = 2,
+    FILE_QUIT = 3
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+int main() {
+    // Neither IDM.FILE_NEW.id nor Color.Red.id is called.
+    // We only use the enum members as values.
+    IDM  m = IDM.FILE_NEW;
+    Color c = Color.Red;
+
+    printf("m = %d, c = %d\n", m, c);
+    return 0;
+}

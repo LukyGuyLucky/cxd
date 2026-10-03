@@ -205,7 +205,7 @@ private:
 	{
 		string name = node.name;
 		string _data = format("enum %s\n{\n", name);
-		string ids = format("const char* %s_ids[] = {\n", name);
+		string ids = format("static const char* %s_ids[] = {\n", name);
 		foreach (i, string field; node.fields)
 		{
 			string namem = format("%s_%s", name, field);
