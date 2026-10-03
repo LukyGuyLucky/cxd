@@ -1,0 +1,35 @@
+include <stdio.h>
+
+// struct static methods as module-level utilities.
+//
+// `static` methods compile to `Struct_method(...)` free
+// functions with NO self parameter. Two structs with the
+// same method name produce distinct symbols (prefix differs).
+// This is the recommended way to organize utils without a
+// namespace system.
+
+struct Utils {
+    static int max(int a, int b) => a > b ? a : b;
+    static int min(int a, int b) => a < b ? a : b;
+    static int clamp(int x, int lo, int hi) {
+        if (x < lo) return lo;
+        if (x > hi) return hi;
+        return x;
+    }
+}
+
+struct Math2 {
+    static int max(int a, int b) => a > b ? a : b;
+}
+
+test "static utils" {
+    check_eq(Utils.max(3, 7), 7);
+    check_eq(Utils.min(3, 7), 3);
+    check_eq(Utils.clamp(15, 0, 10), 10);
+    check_eq(Utils.clamp(-5, 0, 10), 0);
+}
+
+test "same method name across structs does not collide" {
+    check_eq(Utils.max(3, 7), 7);
+    check_eq(Math2.max(3, 7), 7);
+}

@@ -1,0 +1,31 @@
+include <stdio.h>
+
+// C array data via __raw + a file-scope Cx pointer.
+//
+// Cx accepts only `int[N] arr` / `int[] arr`. The C-style
+// `int arr[N]` is not parsed — one declaration syntax only.
+// Raw C array data (XPM icons, generated tables, font
+// bitmaps) is routed through __raw.
+//
+// A `static const` array inside a function has process
+// lifetime, so a Cx-side pointer can safely point at it
+// from any other function.
+
+const int* series = null;
+int series_len = 0;
+
+void init_series() {
+    __raw {
+        static const int _series[] = {10, 20, 30, 40, 50};
+        series = _series;
+        series_len = 5;
+    }
+}
+
+test "static C array survives across function" {
+    init_series();
+    check_eq(series_len, 5);
+    check_eq(series[0], 10);
+    check_eq(series[2], 30);
+    check_eq(series[4], 50);
+}

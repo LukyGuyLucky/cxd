@@ -1,0 +1,26 @@
+include <stdio.h>
+
+// C qualifiers pass through unchanged.
+//
+// `volatile` and `restrict` are preserved verbatim in the
+// generated C — they carry real compiler semantics. In
+// contrast, `inline` is dropped (single-TU build; the C
+// compiler decides inlining better than a keyword can).
+
+volatile int g_counter = 0;
+
+int sum(const int* restrict a, int n) {
+    int s = 0;
+    for (int i = 0; i < n; i++) s += a[i];
+    return s;
+}
+
+test "volatile write/read" {
+    g_counter = 42;
+    check_eq(g_counter, 42);
+}
+
+test "restrict pointer arithmetic" {
+    int[5] a = {1, 2, 3, 4, 5};
+    check_eq(sum(a, 5), 15);
+}

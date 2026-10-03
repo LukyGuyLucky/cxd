@@ -1,0 +1,30 @@
+include <stdio.h>
+
+// Instance method overload by parameter type.
+//
+// Same method name, different parameter types, produces
+// distinct symbols. The parser picks the overload by the
+// argument's AST node type (IntLit → int, FloatLit → float,
+// DoubleLit → double, StringLit → char*).
+//
+// KNOWN BUG (pending): numeric literal text is lost in codegen.
+// `67.0f` and `67.0` both print as `67` in the generated C.
+// The program is *correct* only because C's implicit
+// conversion rescues it; for values with non-trivial float
+// representation (0.1f, 1e-10) the printed literal would be
+// wrong.
+
+struct Hello {
+    int hello(int i)    overload { printf("Hello %d\n", i); return 100; }
+    int hello(float i)  overload { printf("Hello %f\n", i); return 200; }
+    int hello(double i) overload { printf("Hello %f\n", i); return 300; }
+    int hello(char* s)  overload { printf("Hello %s\n", s); return 400; }
+}
+
+test "instance method overload picks by AST type" {
+    Hello h;
+    check_eq(h.hello(67),         100);
+    check_eq(h.hello(67.0f),      200);
+    check_eq(h.hello(67.0),       300);
+    check_eq(h.hello("sixSeven"), 400);
+}
