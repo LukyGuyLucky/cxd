@@ -16,7 +16,7 @@ void test_sqlite3(){
         fprintf(stderr,"Cannot open database: %s\n",sqlite3_errmsg(db));
         return;    
     }
-    char* sql="select * from city;";
+    char* sql="select * from city where id>4085;";
 
     rc=sqlite3_exec(db,sql,callback,0,&err_msg);
 

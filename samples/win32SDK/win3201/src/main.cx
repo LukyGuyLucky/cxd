@@ -4,17 +4,24 @@ include <windows.h>
 include <wchar.h>
 include <strsafe.h>
 
+enum IDM {
+    FILE_NEW  = 1,
+    //FILE_OPEN = 2,
+    FILE_QUIT = 3
+}
 const int ID_HOTKEY=1;
 const int MAX_LEN=1024;
-const int IDM_FILE_NEW=1;// IDM_FILE_OPEN is in the raw_block
-const int IDM_FILE_QUIT=3;
+//const int IDM_FILE_NEW=1;// IDM_FILE_OPEN is in the raw_block
+//const int IDM_FILE_QUIT=3;
 
 __raw{
     #ifndef UNICODE
     #define UNICODE
     #endif 
-
+    
+    //#define IDM_FILE_NEW 1
     #define IDM_FILE_OPEN 2
+    //#define IDM_FILE_QUIT 3
 
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void CenterWindow(HWND);
@@ -46,7 +53,7 @@ __raw{
         wc.hCursor=LoadCursor(NULL,IDC_ARROW);
         wc.hIcon=LoadIcon(NULL,IDI_APPLICATION);
 
-        RegisterClass(&wc);
+        RegisterClassW(&wc);
 
         // Create the window.
 
@@ -272,3 +279,4 @@ __raw{
         SetMenu(hwnd,hMenubar);
     }
 }
+
