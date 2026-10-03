@@ -1414,12 +1414,14 @@ class EnumDecl : Node
 {
     string name;
     string[] fields;
+    Node[] values;   // 显式值；values[i] 为 null 表示该成员没写 `= N`
 
-    this(string name, string[] fields, Position pos)
+    this(string name, string[] fields, Node[] values, Position pos)
     {
         super(NodeKind.EnumDecl, pos);
         this.name = name;
         this.fields = fields;
+        this.values = values;
         this.type_expr = new TypeExprUser(TypeExprKind.Enum, name, pos);
     }
 
@@ -1430,9 +1432,12 @@ class EnumDecl : Node
 
     override EnumDecl dup()
     {
-        // string[] -> cada elemento é string imutável; .dup copia o array
-        // (o slice), preservando o conteúdo isoladamente do original.
-        auto n = new EnumDecl(name, fields.dup, pos);
+        Node[] valuesCopy;
+        valuesCopy.reserve(values.length);
+        foreach (v; values)
+            valuesCopy ~= (v is null ? null : v.dup());
+
+        auto n = new EnumDecl(name, fields.dup, valuesCopy, pos);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;
@@ -1440,9 +1445,10 @@ class EnumDecl : Node
 
     override void subGeneric(string[] names, TypeExpr[] types)
     {
-        // `fields` aqui é string[] (nomes dos membros do enum), não há
-        // TypeExpr para substituir além do type_expr do próprio nó.
         type_expr = subGenericType(type_expr, names, types);
+        foreach (ref v; values)
+            if (v !is null)
+                v.subGeneric(names, types);
     }
 }
 

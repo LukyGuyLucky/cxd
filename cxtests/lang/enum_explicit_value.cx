@@ -1,0 +1,20 @@
+include <stdio.h>
+
+// Enum members with explicit values.
+//
+// Regression for a parser bug: `enum X { A = 1 }` used to spin
+// parseEnumDecl (no branch for '='), eventually OOM. Now the
+// value is parsed, stored on EnumDecl.values[], and emitted as
+// `X_A = 1` in the generated C.
+
+enum IDM {
+    FILE_NEW  = 1,
+    FILE_OPEN = 2,
+    FILE_QUIT = 3
+}
+
+test "enum explicit value" {
+    check_eq(IDM.FILE_NEW, 1);
+    check_eq(IDM.FILE_OPEN, 2);
+    check_eq(IDM.FILE_QUIT, 3);
+}

@@ -202,19 +202,18 @@ private:
     }
 
     void compileEnumDecl(EnumDecl node, uint ind)
-    {
-        string name = node.name;
-    string _data = format("enum %s\n{\n", name);
-		/*
-		const char* ArrayError_ids[] = {
-			[ArrayError_NotFound] = "NotFound"
-		};
-		*/
+	{
+		string name = node.name;
+		string _data = format("enum %s\n{\n", name);
 		string ids = format("const char* %s_ids[] = {\n", name);
-		foreach (string field; node.fields)
+		foreach (i, string field; node.fields)
 		{
 			string namem = format("%s_%s", name, field);
-			_data ~= indent(namem ~ ",\n", ind + 4);
+			// Emit `NAME = <value>` when the source had an explicit value.
+			if (i < node.values.length && node.values[i] !is null)
+				_data ~= indent(format("%s = %s,\n", namem, compileExpr(node.values[i])), ind + 4);
+			else
+				_data ~= indent(namem ~ ",\n", ind + 4);
 			ids ~= indent(format("[%s] = \"%s\",\n", namem, field), 4);
 		}
 		ids ~= "};\n";
@@ -223,7 +222,7 @@ private:
 		if (!isCpp)
 			data ~= format("typedef enum %s %s;", name, name);
 		data ~= ids;
-    }
+	}
 
     string compileStmt(Node node, uint ind)
     {

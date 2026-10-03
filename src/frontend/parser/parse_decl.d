@@ -211,20 +211,28 @@ public:
         return node;
     }
 
-    Node parseEnumDecl(Position pos)
+	Node parseEnumDecl(Position pos)
     {
         Token sname = p.consume(TokenKind.Id, "A name is expected for the enum.");
         p.consume(TokenKind.LBrace, "Expected '{'.");
         string[] fields;
-        
+        Node[] values;
+
         while (!p.isAtEnd() && !p.check(TokenKind.RBrace))
         {
             fields ~= p.consume(TokenKind.Id, "Expected an 'ID'.").s;
+
+            // C-style explicit value: `NAME = <expr>`
+            if (p.match(TokenKind.Equals))
+                values ~= p.parseExpr.parse();
+            else
+                values ~= null;
+
             p.match(TokenKind.Comma);
         }
 
         p.consume(TokenKind.RBrace, "Expected '}'.");
-        return new EnumDecl(sname.s, fields, p.getPos(pos, sname.pos));
+        return new EnumDecl(sname.s, fields, values, p.getPos(pos, sname.pos));
     }
 
     Node parseUnionDecl(Position pos)
