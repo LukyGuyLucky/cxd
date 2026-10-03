@@ -1,5 +1,9 @@
 include <stdio.h>
 
+alias PairIF = Pair<int, float>
+alias BoxIF  = Box<PairIF>
+alias WrapIF = Wrapper<BoxIF>
+
 struct Box<T> {
     T value;
 }
@@ -29,4 +33,9 @@ test "deep nested generic type" {
     Deep2<int, float> x=.{};
     check(x.value.box.value.first==0 && x.value.box.value.second==0.0);
     
+}
+
+test "alias for nested generics"{
+    WrapIF x = .{};
+    check(x.box.value.value.first == 0);
 }
