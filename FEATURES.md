@@ -639,8 +639,10 @@ and failures. Test blocks are **not compiled** by `cx run` or
 Accepted by the parser, **not emitted** to the generated C. Cx
 generates a single translation unit, so C's `inline` — whose
 real role is allowing duplicate definitions across TUs — has
-no meaning here. The keyword is preserved as syntax promise,
-not as codegen.
+no meaning here. The keyword is accepted for readability — it 
+signals intent to human readers. Inline decisions are made by 
+the C compiler, which sees the whole single-TU program and can 
+decide better than a keyword can.
 
 ---
 
