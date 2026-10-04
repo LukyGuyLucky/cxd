@@ -1244,7 +1244,7 @@ private:
         return compileExpr(n);
     }
 
-    void compileStructDecl(StructDecl node, uint ind)
+	void compileStructDecl(StructDecl node, uint ind)
     {
         string name = node.name;
         if (node.genericT.length > 0 || types.get(name) is null) 
@@ -1252,8 +1252,26 @@ private:
         TypeExpr t = *types.get(name);
         TypeExpr a = actualType;
         actualType = t;
+
+        // A struct with no fields and no unions exists only as a
+        // namespace for static methods. C has no zero-size type:
+        // `struct X {}` is a GCC extension, not C99. A C programmer
+        // writing this by hand would emit `X_method(...)` free
+        // functions and no struct at all. Do the same.
+        //
+        // Non-static methods on an empty struct were already rejected
+        // in resolve_symbols.d, so reaching here means all methods are
+        // static (or there are none).
+        if (node.fields.length == 0 && node.unions.length == 0 && !isCpp)
+        {
+            foreach (FnDecl fn; node.functions)
+                compileFnDecl(fn, ind, true, name, node.fromGeneric);
+            actualType = a;
+            return;
+        }
+
         if (!isCpp)
-			typedefs ~= format("typedef struct %s %s;", name, name);
+            typedefs ~= format("typedef struct %s %s;", name, name);
         string _data = format("struct %s {\n", name);
         // emit(format("struct %s {", name), ind);
         foreach (VarDecl var; node.fields)

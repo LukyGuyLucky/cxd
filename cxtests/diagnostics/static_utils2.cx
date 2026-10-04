@@ -1,0 +1,12 @@
+// @expect-errors: 1
+// @expect-first-at: 6:1
+
+include <stdio.h>
+
+struct Utils {
+    int max(int a, int b) => a > b ? a : b;
+}
+test "static utils" {
+    Utils util;
+    check_eq(util.max(3, 7), 7);
+}
