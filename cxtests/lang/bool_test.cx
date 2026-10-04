@@ -1,0 +1,17 @@
+include <stdbool.h>
+include <stdio.h>
+
+// bool after including <stdbool.h>.
+//
+// Cx's default `bool` is `int` (see the __STDBOOL_H guard in the
+// generated C). When the user includes <stdbool.h>, the standard
+// header wins and `bool` becomes `_Bool` (1 byte). This test pins
+// that behavior so a future change does not silently flip it.
+
+test "bool works with stdbool included" {
+    bool b = true;
+    check(b);
+    check(!false);
+    check_eq(true, 1);
+    check_eq(false, 0);
+}

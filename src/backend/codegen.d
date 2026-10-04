@@ -1467,26 +1467,17 @@ public:
 
         if (noHeader) return;
 
-        // Always-on header: test counters and the include guards
-        // Cx relies on. Trace infrastructure is emitted only when
-        // the user passes --stack-trace; the default generated C
-        // stays clean and uses no GNU extensions.
+        // Always-on header: test counters and the standard includes
+        // every generated translation unit needs. Trace infrastructure
+        // and null checks are emitted only when the user asks for them;
+        // the default generated C stays clean and uses no GNU extensions.
         cxHeader ~= `
 static int __cx_test_failed = 0;
 static int __cx_test_passed = 0;
 
-#ifndef __CLANG_STDINT_H
-  #include <stdint.h>
-#endif
-
-#ifndef _STRING_H
-   #include <string.h>
-#endif
-
-#ifndef __STDDEF_H
-   #include <stddef.h>
-#endif
-
+#include <stdint.h>
+#include <string.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
 `;
@@ -1600,13 +1591,9 @@ static inline void cx_print_stack(void) {
 `;
         }
 
-        if (!isCpp)
-            cxHeader ~= `
-#ifndef NULL
-   #define NULL (void*)0
-#endif
-
-#ifndef __STDBOOL_H
+	if (!isCpp)
+		cxHeader ~= `
+#ifndef __STDBOOL_H    
    #define true  1
    #define false 0
    #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
