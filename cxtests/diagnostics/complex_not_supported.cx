@@ -1,0 +1,10 @@
+// @expect-errors: 1
+// @expect-first-at: 6:17 
+
+include <complex.h>
+
+alias Cdouble = _Complex
+
+int main() {
+    return 0;
+}

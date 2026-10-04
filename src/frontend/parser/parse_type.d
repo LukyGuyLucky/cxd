@@ -19,12 +19,24 @@ public:
         this.p = p;
     }
 
-    TypeExpr parsePrimary()
+	TypeExpr parsePrimary()
     {
         Token tk = p.advance();
         switch (tk.kind)
         {
             case TokenKind.Id:
+                // C99/C11 reserved identifiers that Cx does not support.
+                // Reject explicitly instead of letting the user define
+                // their own type with a name that already means
+                // something in C.
+                if (tk.s == "_Complex" || tk.s == "_Imaginary")
+                {
+                    p.err.error(tk.pos,
+                        "'" ~ tk.s ~ "' is a C99 reserved identifier; Cx does not "
+                        ~ "support it. Use __raw for C99 complex, or define a "
+                        ~ "struct for your own use.");
+                    return new TypeExprNamed("/*invalid type*/");
+                }
                 if (TypeExpr* t = p.types.get(tk.s))
                     return *t;
                 return new TypeExprNamed(tk.s, tk.pos);
@@ -152,6 +164,21 @@ public:
 
         if (p.match(TokenKind.Restrict))
             return new TypeExprRestrict(type, type.pos);
+		
+        // C99 complex suffixes: see parsePrimary for the same check
+        // on the bare identifier. Reject here as well, because
+        // `double _Complex` reaches parsePrimary as just `double` and
+        // the `_Complex` token is left for this function to see.
+        if (p.check(TokenKind.Id) &&
+            (p.peek().s == "_Complex" || p.peek().s == "_Imaginary"))
+        {
+            p.err.error(p.peek().pos,
+                "'" ~ p.peek().s ~ "' is a C99 reserved identifier; Cx does not "
+                ~ "support it. Use __raw for C99 complex, or define a "
+                ~ "struct for your own use.");
+            p.advance();
+            return type;
+        }
 
         return type;
     }
