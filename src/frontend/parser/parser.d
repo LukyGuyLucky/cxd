@@ -212,6 +212,29 @@ class Parser
 	Node[] parseIntern()
     {
         Node[] node;
+
+        // `extern` has no meaning in Cx. Cx compiles to a single
+        // translation unit, so there is nothing to declare against
+        // across TUs. External globals (errno, stdout, ...) arrive
+        // through `include <header.h>` and pass straight into the
+        // generated C. Reject explicitly instead of letting `extern`
+        // fall through to expression parsing and vanish.
+        if (peek().kind == TokenKind.Id && peek().s == "extern")
+        {
+            Token tk = advance();
+            err.error(tk.pos,
+                "'extern' has no meaning in Cx: Cx compiles to a single "
+                ~ "translation unit. External globals come in through "
+                ~ "`include <header.h>`.");
+            // Skip the rest of the declaration so we don't emit a
+            // half-parsed node for its tail.
+            while (!isAtEnd() && !check(TokenKind.SemiColon))
+                advance();
+            if (check(TokenKind.SemiColon))
+                advance();
+            return [];
+        }
+
         if (isDecl())
         {
             Node d = parseDecl.parse();

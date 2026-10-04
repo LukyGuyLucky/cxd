@@ -1,0 +1,5 @@
+// @expect-errors: 1
+// @expect-first-at: 4:1
+
+extern int my_extern_var;
+
