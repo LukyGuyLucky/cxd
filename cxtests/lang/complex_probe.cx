@@ -1,0 +1,32 @@
+// MANUAL PROBE — Cx gap: C type suffix `_Complex` is silently
+// dropped by parseType.
+//
+// Two source forms:
+//
+//     alias Cdouble = _Complex          → generates `_Complex Cdouble`
+//     alias Cdouble = double _Complex   → generates `double Cdouble`
+//                                          (the `_Complex` is lost)
+//
+// parseType accepts one base identifier plus trailing `*` only.
+// C qualifiers like `_Complex` are not in the Cx keyword table,
+// so they are treated as ordinary identifiers and, depending on
+// the surrounding context, silently discarded. This violates the
+// "compiled C is what the C programmer would write" rule without
+// telling the user.
+//
+// Long-term fix: add `_Complex` to the Cx keyword table and let
+// parseType accept it as a type suffix. Or, at minimum, have
+// parseType reject unknown trailing identifiers in type position
+// so the silent drop becomes a diagnostic.
+//
+// See docs/semantics/known-gaps.md
+
+include <complex.h>
+
+alias Cdouble = double _Complex
+
+int main() {
+    Cdouble z = 1.0 + 2.0 * I;
+    printf("%f %f\n", creal(z), cimag(z));
+    return 0;
+}
