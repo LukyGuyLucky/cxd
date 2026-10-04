@@ -15,11 +15,39 @@ questions:
 
 ## 0. The philosophy
 
-Cx starts from a single question: **what is the minimal set of
-things C programmers agree C should have had from the start,
-and nothing else?**
+Cx starts from a single question: **what can C already do,
+that programmers end up writing by hand, the same way, over
+and over?**
 
-The agreed-upon list is short:
+Before any feature goes in, it has to pass four tests. Each
+one is checkable against something concrete — a pattern in
+real C code, a piece of generated output, or a reader.
+
+**1. Do C programmers already solve this themselves? Do they
+solve it the same way every time?**
+If yes, it's a candidate. If everyone solves it differently,
+there is nothing to standardize.
+
+**2. Is the generated C what you would have written yourself?**
+This is the hard one. Every construct Cx adds must compile to
+C you would recognize, read, and accept. If the output looks
+foreign, the feature is rejected — no matter how useful it is.
+
+**3. Does it add a capability, or a shorthand?**
+Cx adds shorthand. "C can't do this" is a capability problem,
+and Cx is not the answer. "C can do this, but you retype the
+same few lines every time" is a shorthand problem, and that is
+exactly what Cx is for.
+
+**4. Is it obvious?**
+Read it once. Do you need to think? If you think, do you reach
+the right conclusion? If either answer is no, the feature is
+rejected.
+
+These four tests are the contract. The whole language is what
+survives them.
+
+The list that survives is short:
 
 1. **Module system** — one file, one module, no `.h`/`.c` split,
    no include guards, no duplicate prototypes.
@@ -38,8 +66,10 @@ And the equally deliberate non-list:
   compile time, period. It has no runtime counterpart.
 - **No GC. No hidden allocations.** Every byte the program
   uses is a byte you declared.
-- **No implicit conversions.** `==` compares pointers. If you
-  want value comparison, say `===` explicitly.
+- **No new implicit conversions.** C's own arithmetic
+  conversions still apply — the generated code is C99. But Cx
+  itself never inserts one: `==` still compares pointers, and
+  if you want value comparison you say `===` explicitly.
 
 This is a *restrained* language. In an ecosystem where every
 new language promises more, Cx's position is that **subtraction
