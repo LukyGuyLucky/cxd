@@ -25,6 +25,9 @@
 - 定位：把 Cx 当"C 的最小现代化扩展"用，不做特性设计者
 - 已明确放弃依赖上游作者；一切自决，改 Cx 源码只为自用
 - 上线节奏：改动 → 跑测试 → commit → 推 gitcode
+- 自称"菜鸟"，对"被语法糖搞疯"有真实的恐惧
+  （原话：isoC 都学不会，你再给我添点料不疯才怪）
+- 这条恐惧就是判据 2 和 4 的现实来源，不只是抽象原则
 
 ## 协作基调
 
@@ -52,6 +55,24 @@
 4. **傻直白：用户读到这里需要动脑吗？动脑之后能得到
    正确结论吗？**
    —— 两个都是"是" → 过；任一"否" → 打回
+
+## 判据的地位（重要）
+
+四条判据不只是内部工序，同时是**对外的担保**。
+
+C 程序员读新语言时防的是"这个语言骗我"——说的和产出
+的是不是一回事。四条判据全部在回答这个：判据 2 是
+可直接验证的担保（给他 .cx，给他 --emit-c，他一眼定
+真假），判据 1 是它的前置。
+
+因此：
+
+- 只作内部工序读，判据被读窄了
+- FEATURES.md 第 0 节现在把这四条当作 contract 写给
+  读者看，不是只写给维护者
+- 任何文档里出现"C programmers agree X"这类**虚构主语
+  + 不可证的断言**，都要删。改写成可指向具体重复的
+  观察（"C 能做，但每次手写同样几行"）。
 
 ## 判据背后的原理
 
@@ -86,6 +107,19 @@
 - C 的库（直接调用，无 bindings）
 - C 的头文件（透传，不解析）
 
+**边界处理原则（_Complex 与空 struct 判例）**
+
+不拿走清单里"所有 C 关键字、类型"的准确读法：
+
+- 从没工作过的 C 关键字（`_Complex`/`_Imaginary`）→ 明拒
+  + 指路（__raw 或 std struct + 方法），不算拿走
+- 生成的 C 是 GNU 扩展而不是 ISO C 的（空 struct + 实例
+  方法）→ Cx 层明拒，不给用户看 gcc 的错
+- 兜底可行的（空 struct + 全 static 方法）→ 不发射死重，
+  只发射 `Utils_max(...)` 自由函数，判据 2 过
+
+统一句式：**C 支持不了的东西，Cx 不假装支持。**
+
 ## 输出格式约定（必须遵守）
 
 给用户复制的整段文档（release notes / README / INSTALL 等）：
@@ -93,6 +127,10 @@
 - 整份内容包在一个三反引号代码块里
 - 内部的代码示例用 4 空格缩进，不要用三反引号
 - 用户点 Copy 后整段粘到目标编辑器，渲染正常
+
+这条约定是与 AI 磨合了很多次才定下的：早期 AI 给的文档
+格式会中途突变，导致用户只能一段一段复制粘贴再手动
+拼格式。违反这条就是退回那个状态。
 
 给用户贴进终端的命令、或要写进文件的脚本：
 
@@ -111,30 +149,72 @@
 - 不要一次堆多条命令
 - 用户会把"编译输出 / git 输出 / 运行输出"贴回来
 - 遇到用户报错，先让用户贴原始输出，不要猜
+- 给整份文件替换时，如果 diff 会刷屏，直接给整段函数
+  / 整份文件，不要让用户大海捞针找插入点
 
 ## 日常工作流
 
 - 编译：手动 `dub build --compiler=ldc2 --build=release`
 - 同步到 e:\cxd：`powershell -ExecutionPolicy Bypass -File sync.ps1`
 - diagnostics 回归：`cxtests/diagnostics/run.ps1`
+- lang 正例回归：`cxtests/lang/run.ps1`
 - 新测试：一个一个手动跑，不套自动化，用户要看内容
+
+### 测试目录约定
+
+- `cxtests/lang/` —— 正例。每文件有 test 块，期望
+  `N passed, 0 failed`。
+  - `*_probe.cx` —— 手动探针（只为 --emit-c），
+    runner 跳过
+  - `@expect-fail: N` —— 声明故意失败 N 次（教学 /
+    自测 check_fail），runner 按此判
+- `cxtests/diagnostics/` —— 负例。头注释声明期望：
+  - `// @expect-errors: N` + `// @expect-first-at: L:C`
+  - `// @expect-compile-fail-contains: <substring>`
+  - `// @expect-runtime-fail: N`
+  - 无头注释 → INFO，不计通过/失败
 
 ## 近期已落地（截至上一会话，供续接锚点）
 
-- `_Complex` / `_Imaginary` 明拒，诊断指路 __raw
-  （commit d51c3ef）；未来需求在前时走 std struct+方法
-  造 Complex
-- 数字字面量歧义修复（2ff901a）
-- 科学计数法修复（7218b1b）
+- FEATURES.md 第 0 节重写：删"虚构共识"，四条判据作为
+  对 C 程序员的 contract 写进去（21c5b49）
+- 空 struct 策略：全 static 不发射 struct/typedef；含
+  非 static 在 resolve_symbols.d 明拒（4bcd1ac）
+- lang runner（cxtests/lang/run.ps1）建立，含 probe 跳过
+  与 @expect-fail（a603e01）
+- `_Complex` / `_Imaginary` 明拒（d51c3ef）
+- sync.ps1 建立（cd8c1fd）
+- 数字字面量歧义修复（2ff901a）；科学计数法修复（7218b1b）
 - win3206 纯 UI demo 入库（7abb768）
-- sync.ps1 建立
-- e:\cxd 不再备份 src
 
 ## 当前 backlog
 
-- 空 struct 非标准 C（struct Utils {} 是 GCC 扩展）
+- **overload 是否违反傻直白** —— 挂起。不取决于判据，
+  取决于上游作者是否回归：他回，是上游的事；他不回，
+  是自决的事。动它之前先别动别的。
+- **FnDecl.name 被 parser 提前 mangled** —— parse_decl.d
+  第 79 行给方法名拼了 `struct名_`，第 108 行还拼 overload
+  后缀。所有读 fn.name 的地方拿到的是 mangled 名。短期
+  够用，但做 overload 相关的事会反复踩。
 - extern 变量声明未验证
+- 重载后缀边界（`int**`、`const`、`unsigned` 未验证）
 - overload 重名诊断改进（建议提示加 overload 关键字）
-- 重载后缀边界（int**、const、unsigned 未验证）
-- overload 是否违反"傻直白"——待议（判据级问题，
-  动它之前先别动别的）
+
+## 已解决（保留在此，防止重做）
+
+- ~~空 struct 非标 C~~ → 4bcd1ac
+- ~~数字字面量文本丢失~~ → 2ff901a
+- ~~inline in struct~~ → 已决，文档已写，不支持
+- ~~cx.exe + std 同步脚本化~~ → sync.ps1，cd8c1fd
+
+---
+
+## 一条元原则
+
+用户在做的是**语言设计**，但拒绝做"语言设计师"。他的
+判据全部来自"手写 C 的人会怎么想"。所以任何提议先进
+四条判据，不在判据外另立理由——哪怕是"别的语言都
+有"或"这样更好看"。
+
+AI 的职责不是发明特性，是帮用户把直觉擦亮、把话说
+准、把没看到的反例找出来。
