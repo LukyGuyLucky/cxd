@@ -1459,14 +1459,19 @@ public:
         this.resolver = resolver;
         this.haveStackTrace = haveStackTrace;
         this.checkNullPtr = checkNullPtr;
-        
+
         this.isCpp=isCpp;
-        
+
         if (isCpp)
-			cxHeader ~= "\n#define restrict __restrict__\n";
-        
+            cxHeader ~= "\n#define restrict __restrict__\n";
+
         if (noHeader) return;
-		cxHeader ~= `
+
+        // Always-on header: test counters and the include guards
+        // Cx relies on. Trace infrastructure is emitted only when
+        // the user passes --stack-trace; the default generated C
+        // stays clean and uses no GNU extensions.
+        cxHeader ~= `
 static int __cx_test_failed = 0;
 static int __cx_test_passed = 0;
 
@@ -1482,13 +1487,16 @@ static int __cx_test_passed = 0;
    #include <stddef.h>
 #endif
 
+#include <stdlib.h>
+#include <stdio.h>
+`;
+
+        if (haveStackTrace)
+        {
+            cxHeader ~= `
 #ifndef CX_STACK_MAX
 #define CX_STACK_MAX 1024
 #endif
-
-#ifndef CX_NO_TRACE
-#include <stdlib.h>
-#include <stdio.h>
 
 typedef struct {
     const char *fn;
@@ -1547,15 +1555,6 @@ static inline void cx_print_stack(void) {
     }
 }
 
-#else
-#include <stdio.h>
-
-static inline void cx_print_stack(void) {
-    printf("  (stack trace unavailable: binary compiled without stack trace support)\n");
-}
-
-#endif
-
 #define __CX_PANIC(msg, file, line) do { \
     fprintf(stderr, "PANIC (%s:%d): %s\n", file, line, msg); \
     fprintf(stderr, "stack trace:\n"); \
@@ -1577,16 +1576,32 @@ static inline void cx_print_stack(void) {
         (call_expr); \
         cx_pop(); \
     } while (0)
+`;
+        }
+        
+		else
+        {
+            cxHeader ~= `
+#define __CX_PANIC(msg, file, line) do { \
+    fprintf(stderr, "PANIC (%s:%d): %s\n", file, line, msg); \
+    exit(1); \
+} while (0)
+`;
+        }
 
+        if (checkNullPtr)
+        {
+            cxHeader ~= `
 #define __CX_CHECK_NULL_PTR(n, line, file) \
     do { \
         if ((n) == NULL) \
             __CX_PANIC("Attempted to dereference a null pointer.", file, line); \
     } while (0)
 `;
+        }
 
-    if (!isCpp)
-        cxHeader ~= `
+        if (!isCpp)
+            cxHeader ~= `
 #ifndef NULL
    #define NULL (void*)0
 #endif
