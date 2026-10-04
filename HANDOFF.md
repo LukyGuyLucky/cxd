@@ -28,9 +28,13 @@
 - 自称"菜鸟"，对"被语法糖搞疯"有真实的恐惧
   （原话：isoC 都学不会，你再给我添点料不疯才怪）
 - 这条恐惧就是判据 2 和 4 的现实来源，不只是抽象原则
-- **重要转折（本会话）**：从"改编译器"扩展到"改标准库"。
-  std/string.cx 因为 overload 禁用而改名（见下节"标准库"）。
-  这意味着他的资产不再只是编译器，还有用户可见的库。
+- 用户对"半吊子做法"敏感，看到"加进去但没用"的代码会
+  要求清理（例：include guard 冗余）。这不是挑剔，是
+  判据 2 的个人版。
+- 从"改编译器"扩展到"改标准库"。std/string.cx 已因
+  overload 禁用而改名（见"标准库"节）。
+- 用户会做自省，把今天的决定和明天的自己对照。允许
+  判据本身被修正。AI 的判断被纠正时，追认不辩护。
 
 ## 协作基调
 
@@ -76,11 +80,11 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 因此：
 
 - 只作内部工序读，判据被读窄了
-- FEATURES.md 第 0 节现在把这四条当作 contract 写给
-  读者看，不是只写给维护者
+- FEATURES.md 第 0 节把这四条当作 contract 写给读者看，
+  不是只写给维护者
 - 任何文档里出现"C programmers agree X"这类**虚构主语
   + 不可证的断言**，都要删。改写成可指向具体重复的
-  观察（"C 能做，但每次手写同样几行"）。
+  观察（"C 能做，但每次手写同样几行"）
 
 ## 判据背后的原理
 
@@ -99,13 +103,12 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - 泛型自动类型推导 / 缺省
 - 运行时反射
 - 图灵完备 comptime
-- **函数重载（overload）** —— 本会话从"待议"改为"不做"。
-  理由：判据 2。Cx 生成的 C 里，重载被 mangle 成
+- **函数重载（overload）** —— 已禁用（207bcfd）。理由：
+  判据 2。Cx 生成的 C 里，重载被 mangle 成
   `PtrTest_go_intP` 这类机械名，用户在 C 那头看不到原名，
   不能改，调试时符号表里也得对一遍才认得出。C 程序员
   的手法是手动起名（`vec_add_int` / `vec_add_float`）——
-  名字是他起的，是资产。判据 2 打回。实现：parser 层
-  遇 `overload` 关键字报错（207bcfd）。
+  名字是他起的，是资产。
 - 闭包（lambda 无捕获可以）
 - 虚表 / 析构 / RAII / 异常
 - 多重继承
@@ -121,7 +124,7 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - C 的库（直接调用，无 bindings）
 - C 的头文件（透传，不解析）
 
-**边界处理原则（_Complex、空 struct、extern 判例）**
+**边界处理原则**
 
 不拿走清单里"所有 C 关键字、类型"的准确读法：
 
@@ -131,15 +134,59 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
   方法）→ Cx 层明拒，不给用户看 gcc 的错
 - 兜底可行的（空 struct + 全 static 方法）→ 不发射死重，
   只发射 `Utils_max(...)` 自由函数，判据 2 过
-- **在 Cx 语义下没有位置的 C 关键字（`extern`）→ 明拒 +
-  指路**。理由：Cx 是单 TU 编译，`extern` 在 Cx 里没有
+- 在 Cx 语义下没有位置的 C 关键字（`extern`）→ 明拒 +
+  指路。理由：Cx 是单 TU 编译，`extern` 在 Cx 里没有
   意义（跨 TU 声明被单 TU 模型吃掉，引用外部全局走
-  `include <header.h>`）。实现：parser 层遇到 `extern`
-  报错（a8fad20），不 emit。
+  `include <header.h>`）。
+- **工具路径与语言路径分开**：`cx file.cx` 生成的 C 是
+  交付物，判据 2 管到底。`--stack-trace` 是用户显式要求
+  的调试工具输出，其生成的 GNU 扩展（`__typeof__`、
+  `({ ... })`）不算判据 2 违约。默认路径不带 GNU 扩展
+  即可。同理 `--check-null-ptr`、`__raw` 块——用户显式
+  开了，自己选接受。
 
-统一句式：**C 支持不了的东西，Cx 不假装支持。**
-补充：**在 Cx 里没有意义的 C 关键字，也明拒——不假装它
-有意义。**
+统一句式：**C 支持不了或 Cx 里没意义的，明拒 + 指路，
+不假装。**
+
+## CX Header 结构（生成物头部）
+
+当前 CX Header 分三部分，按需发射：
+
+1. **无条件区**（所有模式都发）：
+   - `__cx_test_failed` / `__cx_test_passed` 计数器
+   - 五个裸 `#include`：`stdint.h`、`string.h`、`stddef.h`、
+     `stdlib.h`、`stdio.h`
+   - 精简版 `__CX_PANIC`（不打印"stack trace:"标题）
+   - `__STDBOOL_H` 护栏块：用户没 include `<stdbool.h>`
+     时兜底 `bool`/`true`/`false`。**有真作用，保留。**
+     注意：用户 include `<stdbool.h>` 后，标准头的
+     `_Bool` 会赢，Cx 默认的 `int bool` 不生效。目前
+     不撞（bool_test.cx 固定此行为），将来遇
+     `__sizeof(bool)` 之类再议。
+
+2. **`if (haveStackTrace)` 分支**（`--stack-trace` 时）：
+   - `CxFrame` 结构 + `__cx_trace` 环形缓冲
+   - `cx_push` / `cx_pop` / `cx_print_stack`
+   - 完整版 `__CX_PANIC`（带 "stack trace:" 标题 + 调用
+     `cx_print_stack()`）
+   - `__CX_CALL` / `__CX_CALL_VOID`（含 `__typeof__` 和
+     `({ ... })` statement expression —— GNU 扩展，见
+     "工具路径与语言路径分开"）
+
+3. **`if (checkNullPtr)` 分支**（`--check-null-ptr` 时）：
+   - `__CX_CHECK_NULL_PTR` 宏
+
+**已删除的装饰**（9fead04）：
+
+- 三个 include guard（`__CLANG_STDINT_H` / `_STRING_H` /
+  `__STDDEF_H`）—— 宏名跟 gcc 实际用的对不上，判断永远
+  为真，等于裸 include。而且标准头自带 guard，外面套是
+  冗余。删。
+- `#ifndef NULL` 块 —— `stddef.h` 必然带 NULL，块体永不
+  执行。删。
+
+判断标准：**生成的 C 是 C 程序员会写的样子，不是"看起来
+很安全"的样子。**
 
 ## 输出格式约定（必须遵守）
 
@@ -192,8 +239,8 @@ rebuild 只更新 cx.exe；std 在 e:\cxd 是**运行时**读的，必须
 
 - `cxtests/lang/` —— 正例。每文件有 test 块，期望
   `N passed, 0 failed`。
-  - `*_probe.cx` —— 手动探针（只为 --emit-c 或
-    目视检查），runner 跳过
+  - `*_probe.cx` —— 手动探针（只为 --emit-c 或目视检查），
+    runner 跳过
   - `@expect-fail: N` —— 声明故意失败 N 次（教学 /
     自测 check_fail），runner 按此判
 - `cxtests/diagnostics/` —— 负例。头注释声明期望：
@@ -202,9 +249,9 @@ rebuild 只更新 cx.exe；std 在 e:\cxd 是**运行时**读的，必须
   - `// @expect-runtime-fail: N`
   - 无头注释 → INFO，不计通过/失败
 
-## 标准库（本会话首次触及）
+## 标准库
 
-本会话之前，HANDOFF 里 std 是"从没改动过"。本会话首次动了。
+std 在 c263df0 之前是"从没改动过"。之后动了。
 
 ### std/string.cx
 
@@ -218,52 +265,49 @@ rebuild 只更新 cx.exe；std 在 e:\cxd 是**运行时**读的，必须
 指代清楚，一眼知道参数是什么。这是 std 改名的第一个判例：
 **禁止 overload 后，std 里的多签名同名方法按参数类型改名。**
 
-### std 的维护原则（沿用判据）
+### std 的维护原则
 
 std 是用户可见的库，改名、增删都要过判据 2：用户看它在
 C 那头怎么生成，认不认得。`String.free()` 和 C 的 `free`
 撞名，靠成员解析区分——不改，记着。
 
-## 近期已落地（截至本会话，供续接锚点）
+## 近期已落地（本会话，供续接锚点）
 
-本会话（会话号可查 git log）：
-
-- **21c5b49** FEATURES 第 0 节重写：删"虚构共识"，四条判据
-  作为对 C 程序员的 contract 写进去
-- **4bcd1ac** 空 struct 策略：全 static 不发射 struct/typedef；
-  含非 static 在 resolve_symbols.d 明拒
+- **b86fa8d** codegen：stack-trace 和 null-check 基础设施
+  改为按需发射。默认路径不再带 100 行 trace 代码和
+  `__typeof__`。
+- **9fead04** codegen：CX Header 删三个 include guard 和
+  `#ifndef NULL` 死块。加 cxtests/lang/bool_test.cx 记录
+  `bool` 在 `<stdbool.h>` 下的行为。
+- **c263df0** HANDOFF 更新（上一版）
+- **207bcfd** overload 禁用 + std/string.cx concat 改名
+- **a8fad20** extern 明拒（parser 层）
 - **a603e01** lang runner（cxtests/lang/run.ps1）建立，含
   probe 跳过与 @expect-fail
-- **a8fad20** extern 明拒（parser 层）
-- **207bcfd** overload 禁用 + std/string.cx concat 改名
-
-上一会话及更早：
-
-- `_Complex` / `_Imaginary` 明拒（d51c3ef）
-- sync.ps1 建立（cd8c1fd）
-- 数字字面量歧义修复（2ff901a）；科学计数法修复（7218b1b）
-- win3206 纯 UI demo 入库（7abb768）
+- **4bcd1ac** 空 struct 策略：全 static 不发射 struct/typedef；
+  含非 static 在 resolve_symbols.d 明拒
+- **21c5b49** FEATURES 第 0 节重写
+- **cd8c1fd** sync.ps1 建立
+- **d51c3ef** `_Complex` / `_Imaginary` 明拒
+- **7abb768** win3206 纯 UI demo 入库
 
 ## 当前 backlog
 
 - **FnDecl.name 被 parser 提前 mangled** —— parse_decl.d 第
-  79 行给方法名拼了 `struct名_`。overload 禁用后，第 108
-  行那部分 mangle（参数类型后缀）已删。剩下只有 struct
-  前缀。所有读 fn.name 的地方拿到的仍是加前缀的名字。
-  短期够用，改要小心。
-- 重载后缀边界（`int**`、`const`、`unsigned`）—— 本会话
-  验证结论：overload 本身不做，边界不再有实际意义。但
-  留下两个真判例：
-  - `int*` vs `int**`：mangle 靠 `toString()` 能区分
-    （`intP` / `intPP`），说明 toString 对指针深度是安全的
-  - `const int*`：`toString()` 吐 `const intP` 带空格，
-    直接拼进 C 标识符会生成非法 C。这个 bug 不修（因为
-    overload 已禁），但如果将来别处用 toString 拼 C
-    标识符，会撞上。
-- overload 重名诊断 —— 因 overload 已禁，此项作废
-- extern 变量声明 —— 已处理（明拒），见 a8fad20
-- `const int x` 值传参 = 死写法 —— C 语义下与 `int x` 同
-  签名，Cx 不必额外处理。记录在案，遇坑好用。
+  79 行给方法名拼了 `struct名_`。overload 禁用后，参数类型
+  后缀那部分 mangle 已删。剩下只有 struct 前缀。所有读
+  fn.name 的地方拿到的仍是加前缀的名字。短期够用，改要
+  小心。
+- **`toString()` 不是标识符安全** —— `const int*` 的
+  `toString()` 吐 `const intP`，带空格。overload 禁用后
+  这个 bug 不再触发（没人在拼 C 标识符了），但**如果
+  将来别处用 toString 拼 C 标识符，会撞上**。记着。
+- **`bool` 在 `<stdbool.h>` 下的行为** —— 用户 include
+  后 `bool` 是 `_Bool`（1 字节），不是 Cx 默认的 `int`。
+  bool_test.cx 固定了此行为。若将来 `__sizeof(bool)` 或
+  ABI 相关处撞上，回来处理。
+- **`const int x` 值传参 = 死写法** —— C 语义下与 `int x`
+  同签名，Cx 不必额外处理。记录在案，遇坑好用。
 
 ## 已解决（保留在此，防止重做）
 
@@ -273,6 +317,12 @@ C 那头怎么生成，认不认得。`String.free()` 和 C 的 `free`
 - ~~cx.exe + std 同步脚本化~~ → sync.ps1，cd8c1fd
 - ~~overload 是否违反傻直白~~ → 已判，见"不做清单"
 - ~~extern 变量声明未验证~~ → 已判，明拒（a8fad20）
+- ~~重载后缀边界（int**、const、unsigned）未验证~~ →
+  已判。overload 本身不做，边界不再有实际意义。留下
+  两个判例（见 backlog）
+- ~~stack trace 默认开~~ → 已改为默认关 + `--stack-trace`
+  opt-in（b86fa8d）
+- ~~CX Header 装饰冗余~~ → 已删（9fead04）
 
 ---
 
@@ -290,3 +340,6 @@ AI 的职责不是发明特性，是帮用户把直觉擦亮、把话说
 在于帮他清理边界、找反例、把抽象的判据翻译成具体的
 对照，不是替他做决定。当用户用一句话就击穿了 AI 的
 长篇分析（如 overload 那次），追认，不辩护。
+
+用户允许判据本身被修正。当他说"明日觉今日之非"时，
+他在邀请 AI 也一起自省，不是只自省代码。
