@@ -2,15 +2,21 @@
 
 ## 项目
 
-- 仓库：E:\Learning\cxpack\cx-dev
+- 仓库：E:\Learning\cxpack\cx-dev（git 工坊）
 - 上游：https://github.com/FernandoTheDev/cx
-- 我的 fork：https://gitcode.com/LuckyGuyLucky/cxd（推送入口，
-  自动镜像到 github）
+- 我的 fork：https://gitcode.com/LuckyGuyLucky/cxd（推送入口，自动镜像到 github）
 - 分支：dev
 - 编译器本体用 D 写，用 dub + ldc2 构建
 - 目标：Windows x64；生成的 C 是 C99，用 gcc 编
 - 远程：upstream（作者，不推）/ myfork（github）/ gitcode（常用入口）
-- cx.exe 已同步到 e:\cxd\cx.exe（PATH 上的那份）
+- dev 领先 upstream/dev 数月积压（不写具体数字，会漂）
+
+## 运行时布局
+
+- e:\cxd 是运行时工作目录，只在 PATH 上
+- 里面有：cx.exe + std/
+- src 已不再备份（git 兜底）
+- 同步方式：跑 sync.ps1（只 copy，不编译）
 
 ## 用户状态
 
@@ -106,14 +112,29 @@
 - 用户会把"编译输出 / git 输出 / 运行输出"贴回来
 - 遇到用户报错，先让用户贴原始输出，不要猜
 
+## 日常工作流
+
+- 编译：手动 `dub build --compiler=ldc2 --build=release`
+- 同步到 e:\cxd：`powershell -ExecutionPolicy Bypass -File sync.ps1`
+- diagnostics 回归：`cxtests/diagnostics/run.ps1`
+- 新测试：一个一个手动跑，不套自动化，用户要看内容
+
+## 近期已落地（截至上一会话，供续接锚点）
+
+- `_Complex` / `_Imaginary` 明拒，诊断指路 __raw
+  （commit d51c3ef）；未来需求在前时走 std struct+方法
+  造 Complex
+- 数字字面量歧义修复（2ff901a）
+- 科学计数法修复（7218b1b）
+- win3206 纯 UI demo 入库（7abb768）
+- sync.ps1 建立
+- e:\cxd 不再备份 src
+
 ## 当前 backlog
 
 - 空 struct 非标准 C（struct Utils {} 是 GCC 扩展）
-- inline 在 struct 内被拒（决定不支持，文档已写）
 - extern 变量声明未验证
-- 数字字面量文本丢失（67.0f 生成为 67）
 - overload 重名诊断改进（建议提示加 overload 关键字）
 - 重载后缀边界（int**、const、unsigned 未验证）
-- overload 是否违反"傻直白"——待议（前面提过，
-  四条判据下需重审）
-- cx.exe + std 同步到 e:\cxd\ 的脚本化
+- overload 是否违反"傻直白"——待议（判据级问题，
+  动它之前先别动别的）
