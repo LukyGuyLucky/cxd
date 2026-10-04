@@ -523,11 +523,29 @@ private:
                 return to!string(num.l);
             return to!string(num.u);
 
-        case NodeKind.FloatLit:
-            return to!string((cast(FloatLit) node).val);
+		case NodeKind.FloatLit:
+        {
+            string s = to!string((cast(FloatLit) node).val);
+            // The value may be an integer (e.g. 67.0f → "67"), which
+            // would print as a C int literal. Add ".0f" so it stays
+            // a float. When the string already has a '.' or an
+            // exponent, append only the 'f' suffix.
+            if (!canFind(s, '.') && !canFind(s, 'e') && !canFind(s, 'E'))
+                s ~= ".0f";
+            else
+                s ~= "f";
+            return s;
+        }
 
         case NodeKind.DoubleLit:
-            return to!string((cast(DoubleLit) node).val);
+        {
+            string s = to!string((cast(DoubleLit) node).val);
+            // Same issue: an integer value prints as "67", which C
+            // treats as int. Add ".0" to keep it a double literal.
+            if (!canFind(s, '.') && !canFind(s, 'e') && !canFind(s, 'E'))
+                s ~= ".0";
+            return s;
+        }
 
         case NodeKind.BinaryExpr:
             BinaryExpr binary = cast(BinaryExpr) node;
