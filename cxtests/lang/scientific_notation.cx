@@ -1,0 +1,40 @@
+include <stdio.h>
+
+// Scientific notation.
+//
+// Regression for a lexer bug: `1e3` computed as `3 * 10^1 = 30`
+// because the mantissa and exponent were swapped. `1e-3` crashed
+// in `to!long("")`. Now mantissa and exponent are handled
+// correctly, signs are accepted, and a missing exponent reports
+// a clear error.
+
+test "scientific notation, basic" {
+    double a = 1e3;
+    double b = 2e2;
+    check_eq(a, 1000.0);
+    check_eq(b, 200.0);
+}
+
+test "scientific notation, signs" {
+    double a = 1e-3;
+    double b = 1e+3;
+    check_near(a, 0.001,   1e-9);
+    check_eq(b, 1000.0);
+}
+
+test "scientific notation, mantissa decimals" {
+    double a = 1.5e3;
+    double b = 1.5e-3;
+    check_eq(a, 1500.0);
+    check_near(b, 0.0015, 1e-9);
+}
+
+test "scientific notation, capital E" {
+    double a = 1E3;
+    check_eq(a, 1000.0);
+}
+
+test "scientific notation, large" {
+    double a = 1e10;
+    check_eq(a, 10000000000.0);
+}

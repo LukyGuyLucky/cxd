@@ -549,7 +549,7 @@ public:
                 String buffer;
                 buffer.reserve(20);
 
-                bool isFloat, isDouble, isHex, isBinary, isOctal, isCientific, coeIsDouble, isUlong;
+                bool isFloat, isDouble, isHex, isBinary, isOctal, isUlong;
 
                 if (ch == '0')
                 {
@@ -586,28 +586,40 @@ public:
                     lexDecimal(buffer, isDouble);
                     isFloat = match('F') || match('f');
 
-                    if (match('e') || match('E'))
-                    {
-                        // notação cientifica
-                        isCientific = true;
-                        lexDecimal(coe, coeIsDouble);
-                    }
+					if (match('e') || match('E'))
+					{
+						// Scientific notation: mantissa is already in
+						// `buffer`, parse the exponent here (with an
+						// optional sign).
+
+						bool negExp = false;
+						if (match('-'))
+							negExp = true;
+						else
+							match('+');
+
+						lexNumber(coe);      // exponent digits
+
+						if (coe.data.length == 0)
+						{
+							err.error(getPos(start_o, line),
+								"Scientific notation requires digits "
+								~ "after 'e'/'E'.");
+							continue;
+						}
+
+						double mantissa = to!double(buffer.data);
+						long   expVal   = to!long(coe.data);
+						double result   = mantissa
+										* pow(10.0, negExp ? -expVal : expVal);
+
+						pushToken(Token.tk_double(result, getPos(start_o, line)));
+						continue;
+					}
                 }
-
-                string data = buffer.data();
-
-                if (isCientific)
-                {
-                    // TODO: suportar sinais na notação cientifica (+ e -)
-                    double result = to!double(data);
-                    if (coeIsDouble)
-                        result = to!double(coe.data) * pow(10.0, result);
-                    else
-                        result = to!long(coe.data) * pow(10.0, result);
-                    pushToken(Token.tk_double(result, getPos(start_o, line)));
-                    continue;
-                }
-
+				
+				string data = buffer.data();
+				
                 if (isFloat)
                 {
                     pushToken(Token.tk_float(to!float(data), getPos(start_o, line)));

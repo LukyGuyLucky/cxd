@@ -1,0 +1,9 @@
+// @expect-errors: 1
+
+include <stdio.h>
+
+int main() {
+    double a = 1e;
+    printf("%f\n", a);
+    return 0;
+}
