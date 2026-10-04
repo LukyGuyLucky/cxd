@@ -28,6 +28,9 @@
 - 自称"菜鸟"，对"被语法糖搞疯"有真实的恐惧
   （原话：isoC 都学不会，你再给我添点料不疯才怪）
 - 这条恐惧就是判据 2 和 4 的现实来源，不只是抽象原则
+- **重要转折（本会话）**：从"改编译器"扩展到"改标准库"。
+  std/string.cx 因为 overload 禁用而改名（见下节"标准库"）。
+  这意味着他的资产不再只是编译器，还有用户可见的库。
 
 ## 协作基调
 
@@ -36,6 +39,11 @@
 - AI 不替用户判断方向，只帮用户把方向擦干净
 - 遇到用户提议，AI 先过判据再说"过"或"不过"，不绕
 - 用户有纠正权；AI 的判断被纠正时，追认，不辩护
+- 用户会用自己的话复述 AI 的抽象判断，往往一针见血。
+  例如当 AI 分析 overload 违反判据时，用户回："在cx这头费
+  九牛二虎之力做这么多事情，到了c那头重新起名，不一定中
+  意，何我不自己起名？" —— 这是判据 2 的口语版。记录这类
+  复述是必要的，它们比 AI 的抽象更接近用户的真实语义。
 
 ## 判据（四条）
 
@@ -56,7 +64,7 @@
    正确结论吗？**
    —— 两个都是"是" → 过；任一"否" → 打回
 
-## 判据的地位（重要）
+## 判据的地位
 
 四条判据不只是内部工序，同时是**对外的担保**。
 
@@ -91,7 +99,13 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - 泛型自动类型推导 / 缺省
 - 运行时反射
 - 图灵完备 comptime
-- 运算符重载
+- **函数重载（overload）** —— 本会话从"待议"改为"不做"。
+  理由：判据 2。Cx 生成的 C 里，重载被 mangle 成
+  `PtrTest_go_intP` 这类机械名，用户在 C 那头看不到原名，
+  不能改，调试时符号表里也得对一遍才认得出。C 程序员
+  的手法是手动起名（`vec_add_int` / `vec_add_float`）——
+  名字是他起的，是资产。判据 2 打回。实现：parser 层
+  遇 `overload` 关键字报错（207bcfd）。
 - 闭包（lambda 无捕获可以）
 - 虚表 / 析构 / RAII / 异常
 - 多重继承
@@ -107,7 +121,7 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - C 的库（直接调用，无 bindings）
 - C 的头文件（透传，不解析）
 
-**边界处理原则（_Complex 与空 struct 判例）**
+**边界处理原则（_Complex、空 struct、extern 判例）**
 
 不拿走清单里"所有 C 关键字、类型"的准确读法：
 
@@ -117,8 +131,15 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
   方法）→ Cx 层明拒，不给用户看 gcc 的错
 - 兜底可行的（空 struct + 全 static 方法）→ 不发射死重，
   只发射 `Utils_max(...)` 自由函数，判据 2 过
+- **在 Cx 语义下没有位置的 C 关键字（`extern`）→ 明拒 +
+  指路**。理由：Cx 是单 TU 编译，`extern` 在 Cx 里没有
+  意义（跨 TU 声明被单 TU 模型吃掉，引用外部全局走
+  `include <header.h>`）。实现：parser 层遇到 `extern`
+  报错（a8fad20），不 emit。
 
 统一句式：**C 支持不了的东西，Cx 不假装支持。**
+补充：**在 Cx 里没有意义的 C 关键字，也明拒——不假装它
+有意义。**
 
 ## 输出格式约定（必须遵守）
 
@@ -151,6 +172,8 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - 遇到用户报错，先让用户贴原始输出，不要猜
 - 给整份文件替换时，如果 diff 会刷屏，直接给整段函数
   / 整份文件，不要让用户大海捞针找插入点
+- 用户会主动隔离问题（"分两步说"、"先看这个"），
+  照他的节奏走，不要抢
 
 ## 日常工作流
 
@@ -160,12 +183,17 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - lang 正例回归：`cxtests/lang/run.ps1`
 - 新测试：一个一个手动跑，不套自动化，用户要看内容
 
+**关键提醒**：改了 `std/` 里的任何文件后，光 rebuild **不够**。
+rebuild 只更新 cx.exe；std 在 e:\cxd 是**运行时**读的，必须
+跑 sync.ps1 才会更新。忘了跑会看到"改了 std 但测试还是老
+报错"的假象——错误路径会指向 `e:\cxd/std/...`。
+
 ### 测试目录约定
 
 - `cxtests/lang/` —— 正例。每文件有 test 块，期望
   `N passed, 0 failed`。
-  - `*_probe.cx` —— 手动探针（只为 --emit-c），
-    runner 跳过
+  - `*_probe.cx` —— 手动探针（只为 --emit-c 或
+    目视检查），runner 跳过
   - `@expect-fail: N` —— 声明故意失败 N 次（教学 /
     自测 check_fail），runner 按此判
 - `cxtests/diagnostics/` —— 负例。头注释声明期望：
@@ -174,14 +202,43 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
   - `// @expect-runtime-fail: N`
   - 无头注释 → INFO，不计通过/失败
 
-## 近期已落地（截至上一会话，供续接锚点）
+## 标准库（本会话首次触及）
 
-- FEATURES.md 第 0 节重写：删"虚构共识"，四条判据作为
-  对 C 程序员的 contract 写进去（21c5b49）
-- 空 struct 策略：全 static 不发射 struct/typedef；含
-  非 static 在 resolve_symbols.d 明拒（4bcd1ac）
-- lang runner（cxtests/lang/run.ps1）建立，含 probe 跳过
-  与 @expect-fail（a603e01）
+本会话之前，HANDOFF 里 std 是"从没改动过"。本会话首次动了。
+
+### std/string.cx
+
+因 overload 禁用，两个 `concat` 方法改名：
+
+- `concat(char* other) overload` → `concat_cstr(char* other)`
+- `concat(String other) overload` → `concat_string(String other)`
+- 内部调用 `self.concat(other.ptr)` → `self.concat_cstr(other.ptr)`
+
+命名理由：`cstr` = C 字符串（char*），`string` = String 结构体。
+指代清楚，一眼知道参数是什么。这是 std 改名的第一个判例：
+**禁止 overload 后，std 里的多签名同名方法按参数类型改名。**
+
+### std 的维护原则（沿用判据）
+
+std 是用户可见的库，改名、增删都要过判据 2：用户看它在
+C 那头怎么生成，认不认得。`String.free()` 和 C 的 `free`
+撞名，靠成员解析区分——不改，记着。
+
+## 近期已落地（截至本会话，供续接锚点）
+
+本会话（会话号可查 git log）：
+
+- **21c5b49** FEATURES 第 0 节重写：删"虚构共识"，四条判据
+  作为对 C 程序员的 contract 写进去
+- **4bcd1ac** 空 struct 策略：全 static 不发射 struct/typedef；
+  含非 static 在 resolve_symbols.d 明拒
+- **a603e01** lang runner（cxtests/lang/run.ps1）建立，含
+  probe 跳过与 @expect-fail
+- **a8fad20** extern 明拒（parser 层）
+- **207bcfd** overload 禁用 + std/string.cx concat 改名
+
+上一会话及更早：
+
 - `_Complex` / `_Imaginary` 明拒（d51c3ef）
 - sync.ps1 建立（cd8c1fd）
 - 数字字面量歧义修复（2ff901a）；科学计数法修复（7218b1b）
@@ -189,16 +246,24 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 
 ## 当前 backlog
 
-- **overload 是否违反傻直白** —— 挂起。不取决于判据，
-  取决于上游作者是否回归：他回，是上游的事；他不回，
-  是自决的事。动它之前先别动别的。
-- **FnDecl.name 被 parser 提前 mangled** —— parse_decl.d
-  第 79 行给方法名拼了 `struct名_`，第 108 行还拼 overload
-  后缀。所有读 fn.name 的地方拿到的是 mangled 名。短期
-  够用，但做 overload 相关的事会反复踩。
-- extern 变量声明未验证
-- 重载后缀边界（`int**`、`const`、`unsigned` 未验证）
-- overload 重名诊断改进（建议提示加 overload 关键字）
+- **FnDecl.name 被 parser 提前 mangled** —— parse_decl.d 第
+  79 行给方法名拼了 `struct名_`。overload 禁用后，第 108
+  行那部分 mangle（参数类型后缀）已删。剩下只有 struct
+  前缀。所有读 fn.name 的地方拿到的仍是加前缀的名字。
+  短期够用，改要小心。
+- 重载后缀边界（`int**`、`const`、`unsigned`）—— 本会话
+  验证结论：overload 本身不做，边界不再有实际意义。但
+  留下两个真判例：
+  - `int*` vs `int**`：mangle 靠 `toString()` 能区分
+    （`intP` / `intPP`），说明 toString 对指针深度是安全的
+  - `const int*`：`toString()` 吐 `const intP` 带空格，
+    直接拼进 C 标识符会生成非法 C。这个 bug 不修（因为
+    overload 已禁），但如果将来别处用 toString 拼 C
+    标识符，会撞上。
+- overload 重名诊断 —— 因 overload 已禁，此项作废
+- extern 变量声明 —— 已处理（明拒），见 a8fad20
+- `const int x` 值传参 = 死写法 —— C 语义下与 `int x` 同
+  签名，Cx 不必额外处理。记录在案，遇坑好用。
 
 ## 已解决（保留在此，防止重做）
 
@@ -206,6 +271,8 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 - ~~数字字面量文本丢失~~ → 2ff901a
 - ~~inline in struct~~ → 已决，文档已写，不支持
 - ~~cx.exe + std 同步脚本化~~ → sync.ps1，cd8c1fd
+- ~~overload 是否违反傻直白~~ → 已判，见"不做清单"
+- ~~extern 变量声明未验证~~ → 已判，明拒（a8fad20）
 
 ---
 
@@ -218,3 +285,8 @@ C 程序员读新语言时防的是"这个语言骗我"——说的和产出
 
 AI 的职责不是发明特性，是帮用户把直觉擦亮、把话说
 准、把没看到的反例找出来。
+
+**尤其注意**：用户自己会做判断，且做得很好。AI 的价值
+在于帮他清理边界、找反例、把抽象的判据翻译成具体的
+对照，不是替他做决定。当用户用一句话就击穿了 AI 的
+长篇分析（如 overload 那次），追认，不辩护。
