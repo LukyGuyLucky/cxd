@@ -1,0 +1,9 @@
+// @expect-errors: 1
+// @expect-first-at: 8:9
+
+include <stdio.h>
+
+struct Hello {
+    int dummy;
+    int hello(int i) overload { return 1; }
+}

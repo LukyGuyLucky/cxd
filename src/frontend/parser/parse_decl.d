@@ -102,12 +102,22 @@ public:
         }
         p.consume(TokenKind.RParen, "Expected ')'.");
 
-        if (p.match(TokenKind.Overload))
+		if (p.match(TokenKind.Overload))
         {
-            string types = (args.map!(x => x.type_expr.toString()).array).join("_");
-            fnName =  fnName ~ "_" ~ types;
-            // writeln("fname: ", fnName);
-            flags |= NodeFlags.Overload;
+            // Cx does not support function overloading. C has no
+            // overloading, and the mangled names a Cx-side overload
+            // would generate (`Vec_add_intP`) are names the user
+            // never chose and cannot see from the C side. A C
+            // programmer solves this by naming each function after
+            // its parameter types. Do the same.
+            //
+            // Report and continue parsing without mangling so the
+            // rest of the declaration still type-checks and the user
+            // sees one clear error, not a cascade.
+            p.err.error(name.pos,
+                "'overload' is not supported in Cx: C has no function "
+                ~ "overloading. Give each function a distinct name "
+                ~ "(e.g. 'add_int', 'add_float').");
         }
 
         Node[] body;

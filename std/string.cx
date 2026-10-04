@@ -10,38 +10,41 @@ struct String
     static String from(char* str) => .{str, str.length, false};
 
     static String new(size_t cap) => .{malloc(cap), cap, true};
-    
+
     char* data() => self.ptr;
 
-    char* concat(char* other) overload
+    // Two concat variants, named after their parameter type.
+    // Cx has no overloading: `concat_cstr` takes a C string
+    // (char*), `concat_string` takes a String.
+    char* concat_cstr(char* other)
     {
         size_t len = other.length;
         size_t newLen = self.length + len + 1;
-        
+
         char* ptr = malloc(newLen);
         memcpy(ptr, self.ptr, self.length);
         memcpy(ptr + self.length, other, len);
         ptr[newLen - 1] = '\0';
 
-        if self.owner 
+        if self.owner
             free(self.ptr);
 
         self.ptr = ptr;
         self.length = newLen - 1;
         self.owner = true;
-        
+
         return self.ptr;
     }
 
-    char* concat(String other) overload
+    char* concat_string(String other)
     {
-        self.concat(other.ptr);
+        self.concat_cstr(other.ptr);
         return self.ptr;
     }
 
     void free()
     {
-        if self.owner 
+        if self.owner
             free(self.ptr);
     }
 }

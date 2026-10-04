@@ -1,29 +1,25 @@
 include <stdio.h>
 
-// Instance method overload by parameter type.
+// Instance methods with distinct names, one per type.
 //
-// Same method name, different parameter types, produces
-// distinct symbols. The parser picks the overload by the
-// argument's AST node type (IntLit -> int, FloatLit -> float,
-// DoubleLit -> double, StringLit -> char*).
-//
-// The struct carries a real field. An empty struct is a
-// zero-size type in C -- a GNU extension, not ISO C -- and an
-// instance method needs something to point at. A struct with
-// fields is that something.
+// Cx has no function overloading. In C the same effect is
+// achieved by naming each function after the type it takes:
+// `hello_i`, `hello_f`, `hello_d`, `hello_s`. The name says
+// what the parameter is -- a name the C programmer chose and
+// can see in the symbol table, not one the compiler imposed.
 
 struct Hello {
     int dummy;
-    int hello(int i)    overload { printf("Hello %d\n", i); return 100; }
-    int hello(float i)  overload { printf("Hello %f\n", i); return 200; }
-    int hello(double i) overload { printf("Hello %f\n", i); return 300; }
-    int hello(char* s)  overload { printf("Hello %s\n", s); return 400; }
+    int hello_i(int i)    { printf("Hello %d\n", i); return 100; }
+    int hello_f(float i)  { printf("Hello %f\n", i); return 200; }
+    int hello_d(double i) { printf("Hello %f\n", i); return 300; }
+    int hello_s(char* s)  { printf("Hello %s\n", s); return 400; }
 }
 
-test "instance method overload picks by AST type" {
+test "distinct method names per type" {
     Hello h;
-    check_eq(h.hello(67),         100);
-    check_eq(h.hello(67.0f),      200);
-    check_eq(h.hello(67.0),       300);
-    check_eq(h.hello("sixSeven"), 400);
+    check_eq(h.hello_i(67),         100);
+    check_eq(h.hello_f(67.0f),      200);
+    check_eq(h.hello_d(67.0),       300);
+    check_eq(h.hello_s("sixSeven"), 400);
 }
