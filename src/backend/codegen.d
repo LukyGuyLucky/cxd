@@ -41,6 +41,7 @@ private:
     string[] cxHeader = [];
     string[] typedefs;
     string[] data;
+    string[] globals;
     string[] unionErrors;
     string[] protos;
     string[] source;
@@ -104,6 +105,13 @@ private:
             code ~= "\n\n/* Prototypes */\n";
             code ~= protos.join("\n");
         }
+        
+		if (globals.length > 0)
+        {
+            code ~= "\n\n/* Globals */\n";
+            code ~= globals.join("\n");
+        }
+        
         if (genHeaderFile)
             code ~= "\n\n#endif\n";
 
@@ -177,8 +185,8 @@ private:
             RawStmt n = cast(RawStmt) node;
             return emit(indent("/* raw block */", ind) ~ n.code, 0);
 
-        case NodeKind.VarDecl:
-            data ~= compileVarDecl(cast(VarDecl)node, 0);
+		case NodeKind.VarDecl:
+            globals ~= compileVarDecl(cast(VarDecl)node, 0);
             return;
 
         default:
@@ -831,7 +839,43 @@ private:
 
         if (type !is null)
             typeName = type.toStr();
-
+            
+		// Function-pointer field call: `obj.field(args)` must stay a
+        // plain C field call when `field` is a function pointer stored
+        // in a Cx struct. Otherwise it is treated as a method call and
+        // mangled to `Struct_field(&obj, args)`, which is wrong.
+        if (node.right.kind == NodeKind.CallExpr
+            && node.left.kind == NodeKind.IdentExpr
+            && typeName != "")
+        {
+            CallExpr ce = cast(CallExpr) node.right;
+            string calleeName;
+            if (IdentExpr ci = cast(IdentExpr) ce.callee)
+                calleeName = ci.val;
+            if (calleeName != "")
+            {
+                StructDecl sd = resolver.getStruct(typeName);
+                if (sd !is null)
+                {
+                    foreach (VarDecl vd; sd.fields)
+                    {
+                        if (vd.name == calleeName)
+                        {
+                            string argList;
+                            for (uint i; i < ce.args.length; i++)
+                            {
+                                argList ~= compileExpr(ce.args[i]);
+                                if ((i + 1) < ce.args.length)
+                                    argList ~= ", ";
+                            }
+                            return format("%s.%s(%s)",
+                                compileExpr(node.left), calleeName, argList);
+                        }
+                    }
+                }
+            }
+        }
+		
         if (node.right.kind == NodeKind.CallExpr)
         {
             bool isStatic, fromSelf;

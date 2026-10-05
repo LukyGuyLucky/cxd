@@ -1,0 +1,30 @@
+include <stdio.h>
+
+// Probe: C function pointer stored in a struct field.
+// `obj.field(args)` must compile to a plain C call through the
+// field, not to a Cx method call (`obj_field(obj, args)`).
+
+alias randint_fn= int(int, int)
+
+struct RANDOM{
+    randint_fn randint;
+} 
+
+int test_randint(int lo, int hi) {
+    return lo + hi;
+}
+
+RANDOM mt19937 = {
+    test_randint
+};
+
+int main() {
+    // Path A (known to work): extract field to a variable.
+    randint_fn f = mt19937.randint;
+    printf("via var:   %d\n", f(1, 100));
+
+    // Path B (currently broken): call through the field directly.
+    printf("via field: %d\n", mt19937.randint(1, 100));
+
+    return 0;
+}

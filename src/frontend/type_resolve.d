@@ -43,6 +43,7 @@ private:
     TypeExpr[string] functions;
     TypeExpr reference = null;
     TypeExpr[][string] functionsArgs;
+    Scope globalScope;
 
     void collectDecls(Program program)
     {
@@ -570,7 +571,7 @@ private:
             return;
         }
 
-        Scope scp = new Scope(null);
+		Scope scp = new Scope(globalScope);
         functions[fn.name] = fn.type_expr;
 	
         if (ownerName !is null && !(fn.flags & NodeFlags.Static))
@@ -593,9 +594,25 @@ public:
         this.err = err;
     }
 
-    void resolve(Program program)
+	void resolve(Program program)
     {
         collectDecls(program);
+
+        // Top-level VarDecls (globals) live outside any function.
+        // Register them in a global scope so function bodies can
+        // resolve a variable's type by name. Without this, a global
+        // like `RANDOM mt19937 = ...` keeps the parser's placeholder
+        // TypeExprNamed("mt19937"), and field access on it is
+        // treated as a method call on a nonexistent type.
+        globalScope = new Scope(null);
+        foreach (node; program.body)
+            if (node.kind == NodeKind.VarDecl)
+            {
+                VarDecl v = cast(VarDecl) node;
+                if (v.type_expr !is null)
+                    globalScope.declare(v.name, v.type_expr);
+            }
+
         foreach (node; program.body)
         {
             if (node.kind == NodeKind.FnDecl)
