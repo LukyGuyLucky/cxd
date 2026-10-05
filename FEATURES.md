@@ -3,15 +3,23 @@
 A practical evaluation for programmers coming from C, C++, or
 similar low-level languages.
 
-This is not a feature list. It's an honest answer to four
-questions:
+One sentence first: Cx is a **transpiler to C99** with modules,
+package management, monomorphized generics, and a small set of
+compile-time builtins — designed so the generated C is code you
+would have written yourself.
+
+If "Zig without the build system rewrite" or "D with a much
+smaller surface area" sounds close, you're in the right
+neighborhood.
+
+This document is not a feature list. It's an honest answer to
+four questions:
 
 1. What is the design philosophy?
 2. What can I actually build with Cx today?
 3. What does it give me over plain C?
 4. Where should I *not* use it?
 
----
 
 ## 0. The philosophy
 
@@ -23,315 +31,151 @@ Before any feature goes in, it has to pass four tests. Each
 one is checkable against something concrete — a pattern in
 real C code, a piece of generated output, or a reader.
 
-**1. Do C programmers already solve this themselves? Do they
-solve it the same way every time?**
-If yes, it's a candidate. If everyone solves it differently,
-there is nothing to standardize.
+1. Do C programmers already solve this themselves? Do they
+   solve it the same way every time?
+   If yes, it's a candidate. If everyone solves it differently,
+   there is nothing to standardize.
 
-**2. Is the generated C what you would have written yourself?**
-This is the hard one. Every construct Cx adds must compile to
-C you would recognize, read, and accept. If the output looks
-foreign, the feature is rejected — no matter how useful it is.
+2. Is the generated C what you would have written yourself?
+   This is the hard one. Every construct Cx adds must compile
+   to C you would recognize, read, and accept. If the output
+   looks foreign, the feature is rejected — no matter how
+   useful it is.
 
-**3. Does it add a capability, or a shorthand?**
-Cx adds shorthand. "C can't do this" is a capability problem,
-and Cx is not the answer. "C can do this, but you retype the
-same few lines every time" is a shorthand problem, and that is
-exactly what Cx is for.
+3. Does it add a capability, or a shorthand?
+   Cx adds shorthand. "C can't do this" is a capability
+   problem, and Cx is not the answer. "C can do this, but you
+   retype the same few lines every time" is a shorthand
+   problem, and that is exactly what Cx is for.
 
-**4. Is it obvious?**
-Read it once. Do you need to think? If you think, do you reach
-the right conclusion? If either answer is no, the feature is
-rejected.
+4. Is it obvious?
+   Read it once. Do you need to think? If you think, do you
+   reach the right conclusion? If either answer is no, the
+   feature is rejected.
 
 These four tests are the contract. The whole language is what
 survives them.
 
-The list that survives is short:
+What survives is short:
 
-1. **Module system** — one file, one module, no `.h`/`.c` split,
-   no include guards, no duplicate prototypes.
-2. **Package management** — create, build, run a project with
-   two commands.
-3. **Monomorphized generics** — real `Stack<int>`, not `void*`.
-4. **Compile-time reflection** — `__sizeof`, `__alignof`,
-   `__is`, `__eval`, `target()`.
+- **Module system** — one file, one module, no .h/.c split,
+  no include guards, no duplicate prototypes.
+- **Package management** — create, build, run a project with
+  two commands.
+- **Monomorphized generics** — real Stack<int>, not void*.
+- **Compile-time reflection** — __sizeof, __alignof, __is,
+  __eval, target().
 
-And the equally deliberate non-list:
+And what is deliberately left out:
 
 - **No closures.** A closure captures a stack frame, which
   requires either allocation or lifetime analysis. Cx refuses
   both.
-- **No runtime/compile-time duality.** `__eval` computes at
+- **No runtime/compile-time duality.** __eval computes at
   compile time, period. It has no runtime counterpart.
 - **No GC. No hidden allocations.** Every byte the program
   uses is a byte you declared.
 - **No new implicit conversions.** C's own arithmetic
   conversions still apply — the generated code is C99. But Cx
-  itself never inserts one: `==` still compares pointers, and
-  if you want value comparison you say `===` explicitly.
+  itself never inserts one: == still compares pointers, and if
+  you want value comparison you say === explicitly.
 
 This is a *restrained* language. In an ecosystem where every
-new language promises more, Cx's position is that **subtraction
-is a feature**.
+new language promises more, Cx's position is that
+**subtraction is a feature**.
 
----
 
-## 1. The one-sentence pitch
-
-Cx is a **transpiler to C99** with modules, package management,
-monomorphized generics, and a small set of compile-time
-builtins — designed so the generated C is code you would have
-written yourself.
-
-If "Zig without the build system rewrite" or "D with a much
-smaller surface area" sounds close, you're in the right
-neighborhood.
-
----
-
-## 2. What you can build today
+## 1. What you can build today
 
 Verified on Windows 10 x64, MSYS2 UCRT64, gcc 15.2, LDC 1.40.
 
-### Desktop GUI
+- **Desktop GUI**: wxWidgets (full application with event
+  loop, sizers, menus, Unicode message boxes); GTK;
+  cfltk; libui.
+- **Games / graphics**: raylib; SDL2; GLFW.
+- **Data / files**: sqlite3; libxlsxwriter; libcurl; zlib.
+- **Compilers / toolchains**: LLVM-C.
+- **Systems / low-level**: inline assembly; volatile,
+  restrict, _Atomic; Windows wide strings; GCC builtins.
+- **CLI tools**: file processing, text parsing, regex.
 
-- **wxWidgets** (C++, complex): full application with event
-  loop, sizers, menus, message boxes with Unicode strings.
-  **One command** does everything:
-  
-  ```
-    cx run --cpp --opt -o wx01 \
+The common workflow — any library that ships a .pc file:
+
+    cx demo.cx --opt -o demo \
+        --cflags="$(pkg-config --libs --cflags <name>)"
+
+For wxWidgets (C++ library, no pkg-config):
+
+    cx wx_demo.cx --cpp --opt -o wx_demo \
         --cflags="$(wx-config-3.3 --libs --cflags)"
-  ```
 
-  Cx lexes and parses `.cx`, emits `.cpp`, invokes `g++` with
-  the wxWidgets flags, links, and produces a working `.exe` —
-  no intermediate step, no manual compiler invocation.
+`--emit-c` writes the intermediate file if you want to inspect
+or compile it by hand:
 
-  `--emit-c` is available if you want the intermediate file:
+    cx wx_demo.cx --cpp --emit-c
 
-    cx wx01.cx --cpp --emit-c
+Seven working wxWidgets demos under samples/wxWidgets_demo/.
+70+ programs under examples/.
 
-  This writes `wx01.cpp` — a human-readable source you can
-  compile by hand with the same flags. Useful for debugging,
-  auditing, or integrating into an existing build system. It
-  is not the primary flow; the primary flow is `cx run`.
 
-  Seven working demos under `samples/wxWidgets_demo/`:
-  basic window, JSON tree (two variants), XML tree,
-  image viewer, collapsible panes, secret store.
-
-- **GTK** (C, cross-platform): the standard Linux desktop
-  toolkit, works on Windows too. A minimal window:
-
-```
-    include <gtk/gtk.h>
-
-    int main(int argc, char** argv) {
-        GtkWidget *window;
-
-        gtk_init(&argc, &argv);
-
-        window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        gtk_widget_show(window);
-
-        g_signal_connect(window, "destroy",
-            G_CALLBACK(gtk_main_quit), NULL);
-
-        gtk_main();
-
-        return 0;
-    }
-    \
-```
-
-  Build via `pkg-config`:
-
-```
-    cx gtk_demo.cx --opt -o gtk_demo \
-        --cflags="$(pkg-config --libs --cflags gtk+-3.0)"
-```
-
-  The `pkg-config` pattern works for any library that ships a
-  `.pc` file — GTK, GLib, Cairo, SDL2, libcurl, and most
-  Linux-installed C libraries. This is the standard Linux
-  workflow; no `--cpp` needed for C libraries.
-
-- **cfltk** (FLTK C binding), **libui** — builds and runs.
-
-- **Win32 SDK** directly — windows, dialogs, menus, message
-  loops, all through `__raw` blocks.
-
-### Games / graphics
-
-- **raylib**: full init → game loop → close cycle.
-- **SDL2 / GLFW** via `__raw` + `--cflags`.
-
-### Data / files
-
-- **sqlite3**: prepared statements, `sqlite3_exec`, callbacks.
-- **libxlsxwriter**: Excel generation.
-- **libcurl**: HTTP.
-- **zlib**: compression.
-
-### Compilers / toolchains
-
-- **LLVM-C**: parse `.cx`, emit IR, run JIT.
-
-### Systems / low-level
-
-- Inline assembly via `__raw { __asm__ ... }`.
-- `volatile`, `restrict`, `_Atomic` — native in the type system.
-- Windows wide strings (`wchar_t*`), Unicode message boxes
-  with Greek / Russian / CJK text.
-- Direct access to GCC builtins (`__builtin_clz`,
-  `__builtin_popcount`, ...) with no wrapper.
-
-### CLI tools
-
-- File processing, text parsing, regex.
-- Anything you would write a 200-line C program for.
-
-### Any C library you already have
-
-- **Macros from C headers work.** Include the header, use the
-  macros:
-  
-  ```
-    include <windows.h>
-    // ...
-    int flags = MB_OK | MB_ICONINFORMATION;  // from windows.h
-  ```
-
-  Macro *constants* (`MB_OK`), *function macros* (`MIN`,
-  `MAX`, `LOWORD`, `HIWORD`), and third-party macro APIs all
-  resolve. Cx keeps C's ultimate escape hatch: **the
-  preprocessor still exists underneath, and its definitions
-  are visible from Cx code**.
-
-  Tested with `cmisc.h` (custom macros), `windows.h`
-  (`MB_OK`, `MB_ICONINFORMATION`), and `assert.h`.
-
-- **Linux users**: `--cflags="$(pkg-config --libs --cflags <name>)"`
-  is the standard way to pull in any library installed via
-  the system package manager.
-
----
-
-## 3. What you get over plain C
+## 2. What you get over plain C
 
 ### Module system
 
-    myproject/
-    ├── cx.json
-    ├── src/
-    │   ├── main.cx
-    │   ├── utils.cx
-    │   └── io/
-    │       ├── reader.cx
-    │       └── writer.cx
+One file = one module. No header guards, no forward
+declarations, no duplicated prototypes, no build
+configuration for adding a file.
 
     // main.cx
     import utils;
     import io.reader;
 
-One file = one module. No header guards, no forward
-declarations, no duplicated prototypes, no build configuration
-for adding a file. This is the feature C programmers agree on
-without argument.
+Adding a file to the build means adding a file. Nothing else.
 
 ### Package management
 
+Two commands from empty directory to running executable:
+
     mkdir testdemo && cd testdemo
     cx init
-    # prompts:
-    #   Project name (default: cx-project): testdemo
-    #   Output file (default: main): testdemo
     cx run
-    # → Hello World!
 
-`cx init` scaffolds the project (`cx.json` + `src/main.cx`),
-`cx run` compiles and executes. Two commands from empty
-directory to running executable.
+`cx init` scaffolds cx.json + src/main.cx. Multi-module
+projects with subdirectories work out of the box — import
+io.reader walks src/io/reader.cx automatically.
 
-`cx.json` is a minimal project descriptor:
-
-```
-    {
-        "name": "testdemo",
-        "output": "testdemo"
-    }
-```
-
-Multi-module projects with subdirectories work out of the box —
-`import io.reader` walks `src/io/reader.cx` automatically.
-
-Single-file compile-and-run is equally direct, no project
-needed:
+Single-file compile-and-run needs no project:
 
     cx day1.cx -o day1 && day1
 
-### Type inference sugar
-
-Three forms that let you write the type once and skip it
-everywhere else:
-
-```
-    Book live    = .new();                                  // static method
-    Book seagull = .{title="Seagull", author="Gaoming", published=2016};
-    Switches on  = .Off;                                    // enum member
-    String name  = .from("Fernando");                       // static factory
-```
-
-`.new()` calls a static method, `.{...}` is a struct literal,
-`.Enum` picks an enum value. The compiler takes the type from
-the left-hand side. Combined with `alias` and `defer`, this
-removes most of the boilerplate C programmers usually fight.
-
-### Error unions (`T!E`)
-
-```
-    int!MathError divide(int a, int b) {
-        if b == 0 return MathError.DivByZero;
-        return a / b;
-    }
-```
-
-The compiler generates a tagged union. The caller must check
-`.valid`. No `errno`, no `goto cleanup` ladders. Chains
-naturally:
-
-```
-    int!Error pipeline(int a, int b) {
-        int!Error step1 = divide(a, b);
-        if !step1.valid return step1.error;
-
-        int!Error step2 = approximate_sqrt(step1.ok);
-        if !step2.valid return step2.error;
-
-        return step2.ok;
-    }
-```
-
 ### `defer`
 
-```
+This is the single most-used feature in practice. It replaces
+the goto cleanup ladder that dominates real C code:
+
     FILE* f = fopen(path, "r");
     defer fclose(f);
     // ... 40 lines ...
     // fclose runs on every exit path
 
-    char* desc = book.description();
-    defer free(desc);
-```
-LIFO order, every exit path. This is the single most-used
-feature in practice — it replaces the `goto cleanup` ladder
-that dominates real C code.
+LIFO order, every exit path.
+
+### Error unions (T!E)
+
+The compiler generates a tagged union. The caller must check
+.valid:
+
+    int!MathError divide(int a, int b) {
+        if b == 0 return MathError.DivByZero;
+        return a / b;
+    }
+
+No errno, no goto cleanup ladders. Chains naturally.
 
 ### Monomorphized generics
 
-```
+Real C structs, no void*, no runtime dispatch:
+
     struct Stack<T> {
         T* data;
         int len, cap;
@@ -341,388 +185,188 @@ that dominates real C code.
 
     Stack<int> si;
     Stack<float> sf;
-```
 
-Two independent C structs, no `void*`, no runtime dispatch.
-Nested generics work:
+Nested generics work; seven-level nesting verified.
 
-```
-    struct Deep<A, B> {
-        Triple<Wrapper<A>, Pair<A, B>, Box<B>> value;
-    }
-```
+### Type inference sugar
 
-Seven-level nesting verified — every layer flattened and
-topologically sorted.
+Three forms that let you write the type once and skip it
+everywhere else:
 
-Generics combine with error unions and callbacks:
+    Book live    = .new();                                 // static method
+    Book seagull = .{title="Seagull", author="Gaoming"};   // struct literal
+    Switches on  = .Off;                                   // enum member
+    String name  = .from("Fernando");                      // static factory
 
-```
-    struct Mapper<T> {
-        T value;
-        static Mapper<T> of(T v) => .{v};
-        Mapper<T> map(T(T) f) => .{f(self.value)};
-        T get() => self.value;
-    }
+### `===` — explicit value comparison
 
-    Mapper<int> m = Mapper<int>.of(10).map(dobro).map(negativo);
-```
-
-### String and struct equality — what `===` actually does
-
-```
     char* a = "hello";
     char* b = "hello";
-
     if a == b    // pointer comparison (C semantics)
     if a === b   // strcmp(a, b) == 0
 
-    wchar_t* wa = L"hello";
-    wchar_t* wb = L"hello";
-    if wa === wb // wcscmp(wa, wb) == 0
-```
-
-`===` is **not** automatic deep comparison. It is
-"user-defined equality":
-
-- `char*` → built-in `strcmp`
-- `wchar_t*` → built-in `wcscmp`
-- struct → uses your `cmp` method if you defined one:
-
-```
-    struct Vec3 {
-        float x, y, z;
-        int cmp(Vec3 other) {
-            if self.x == other.x && self.y == other.y && self.z == other.z
-                return 1;
-            return 0;
-        }
-    }
-
-    Vec3 v1, v2;
-    if v1 === v2   // → Vec3_cmp(&v1, v2) != 0
-```
-
-Without a `cmp` method, `===` on structs has no
-implementation. Define it if you want it.
-
-### Array literals
-
-Two forms, both accepted:
-
-```
-    u32[] p1 = [2, 4, 10];
-    int[] arr1 = [3];
-    int[3] arr2 = [3, 10, 2];
-    int[] arr3 = {4};
-```
-
-Multi-dimensional arrays nest:
-
-```
-    int[2][2][1] arr = [[60], [7]];
-    printf("%d\n", arr[0][0][0] + arr[0][0][1]);
-
-Array literals are **expressions** — usable in function
-arguments, not just initializers:
-
-    int sum3(int[3] a) { return a[0] + a[1] + a[2]; }
-    sum3([4, 5, 6]);    // → sum3((int[]){4, 5, 6})
-```
-
-Functions returning arrays by value (`int[3] foo()`) are
-rejected at the Cx level — C has no such construct.
+=== is *user-defined* equality, not automatic deep
+comparison. char* uses strcmp, wchar_t* uses wcscmp, and
+structs use your `cmp` method if you defined one. If you
+don't define `cmp`, === on a struct has no implementation.
 
 ### Macros that aren't `#define`
 
-```
     macro Square(x) { x * x }
 
     int a = Square(1 + 2);   // → (1 + 2) * (1 + 2) = 9
-```
 
-AST-level expansion. Arguments parenthesized automatically,
-and the whole expansion is wrapped so `Square(1+2) * 3` binds
-correctly. The classic `#define` pitfall is gone. (C's
-`#define` still works through `include` — Cx's `macro` is an
-additional tool, not a replacement.)
+AST-level expansion. Arguments parenthesized automatically.
+The classic #define pitfall is gone. C's own #define still
+works through include — Cx's macro is an additional tool, not
+a replacement.
 
 ### Compile-time evaluation — deliberately compile-time only
 
-```
     int fib(int n) {
         if n <= 1 return n;
         return fib(n - 1) + fib(n - 2);
     }
-
     int f20 = __eval(fib(20));   // generated C: `int f20 = 6765;`
-```
 
-`__eval` runs an interpreter at compile time. **There is no
-runtime counterpart.** This is a deliberate position: runtime
-reflection and dynamic evaluation are double-edged — they buy
-flexibility at the cost of predictability, binary size, and
-debuggability. Cx takes the compile-time half and refuses the
-other.
+There is no runtime counterpart. Runtime reflection and
+dynamic evaluation buy flexibility at the cost of
+predictability, binary size, and debuggability. Cx takes the
+compile-time half and refuses the other.
 
-### Lambda — deliberately no closures
+### No closures (by design)
 
-```
     Fn sum = fn (int x, int y) int => x + y;   // works
-
     int n = 10;
     Fn add_n = fn (int x) int => x + n;        // rejected
-```
 
-A closure would need to allocate or track a stack frame. Cx
-refuses both. If you need to pass state, use an explicit
-struct with a function pointer — which is what a closure
-compiles to anyway, minus the syntax sugar and the hidden
-allocation.
-
-Function types are first-class values. `int(int,int)` is a
-type — usable as a variable type, parameter type, struct
-field, array element. `alias Fn = int(int,int)` is optional
-sugar.
+A closure would need to allocate or track a stack frame. If
+you need to pass state, use an explicit struct with a function
+pointer — which is what a closure compiles to anyway, minus
+the syntax sugar and the hidden allocation.
 
 ### Platform conditionals
 
-```
     target(windows) int plat_id() => 1;
     target(linux)   int plat_id() => 2;
-```
 
-Filtered at parse time. The inactive branch never enters the
-AST. Generated C has one definition, no `#ifdef`. Works on
-declarations, statements, and expressions.
-
-```
-    test "dispatch" {
-        target(windows) check_eq(plat_id(), 1);
-        target(linux)   check_eq(plat_id(), 2);
-    }
-```
-
+Filtered at parse time. Inactive branch never enters the AST.
+Generated C has one definition, no #ifdef.
 
 ### Wide string literals
 
-```
     wchar_t* w = L"hello";
     wchar_t[] greeting = L"你好世界";
-```
 
-`L"..."` is a **compile-time constant**, not a runtime
-`malloc`. No `free` needed. `===` on `wchar_t*` uses
-`wcscmp`:
-
-```
-    check(w === L"hello");   // → wcscmp(w, L"hello") == 0
-```
-
-Before this, Windows API calls like `MessageBoxW` needed a
-helper function (`L("...")` from a C header) that ran
-`MultiByteToWideChar` at runtime and required `defer free`.
-Now the literal goes in directly:
-
-```
-    MessageBoxW(NULL, L"你好世界", L"hi", 0);
-```
-
-Note: `L'...'` (wide char literal) is **not** supported.
-For character-by-character comparisons, use the narrow
-char literal — `w[0] == 'h'` works because C promotes both
-sides to `int`.
+L"..." is a compile-time constant, not a runtime malloc. No
+free needed. === on wchar_t* uses wcscmp.
 
 ### Reflection
 
-Size and alignment fold to C operators:
+Compile-time only, folds to C operators or plain field
+access, zero runtime cost:
 
-```
-    __sizeof(Vec3)    // → sizeof(Vec3), resolved at compile time
+    __sizeof(Vec3)    // → sizeof(Vec3)
     __alignof(Vec3)   // → _Alignof(Vec3)
-    __is(int, float)  // → false, folded to a constant
-```
+    __is(int, float)  // → false
+    __fieldCount(Favorite)
+    __fieldName(Favorite, 0)
+    __fieldGet(f, "kind")   // → f.kind
 
-Struct introspection works at compile time:
+### C interop — the killer feature
 
-```
-    struct Favorite {
-        FruitKind kind;
-        FruitData data;
-    }
+`include <stdio.h>` and call anything. No binding
+generator, no FFI layer, no extern "C". Headers pass
+straight through to the generated C.
 
-    __fieldCount(Favorite)       // → 2
-    __fieldName(Favorite, 0)     // → "kind"
-    __fieldType(Favorite, 0)     // → "FruitKind"
-    __fieldGet(f, "kind")        // → f.kind
-    __unionGet(f.data, "apple")  // → f.data.apple
-```
+Macros from C headers work: macro *constants* (MB_OK),
+*function macros* (MIN, MAX, LOWORD), and third-party macro
+APIs all resolve. The preprocessor still exists underneath,
+and its definitions are visible from Cx code.
 
-All five fold at compile time. `__fieldGet` and `__unionGet`
-expand to plain field access — zero runtime cost, no
-descriptor tables, no hidden data. The caller is responsible
-for knowing which union arm is live (same as mach, same as C).
+`__raw` is not a scope, it's an inline fragment — C code
+spliced directly into the generated function, so it shares
+variables with surrounding Cx code:
 
-### C interop
-
-`include <stdio.h>` and call anything. No binding generator, no
-FFI layer, no `extern "C"`. Headers pass straight through to
-the generated C.
-
-**This is the killer feature.** No other modern language lets
-you call an arbitrary C library on day one without a wrapper,
-a generator, or a build script.
-
-#### `__raw` is not a scope, it's an inline fragment
-
-```
     int cppVal;
     void* vecPtr;
-
     __raw {
         cppVal = 42;
         auto* vec = new std::vector<int>{1, 2, 3};
         vecPtr = vec;
     }
 
-    __raw {
-        auto* vecBack = static_cast<std::vector<int>*>(vecPtr);
-        for (int x : *vecBack)
-            printf("%d\n", x);
-    }
-```
+This is how Cx reaches C++ features (STL containers,
+std::string, iostream) without wrapping them.
 
-Two `__raw` blocks sharing Cx-scope variables. `cppVal` and
-`vecPtr` are visible in both, because `__raw` splices C
-directly into the generated function — no new scope, no
-isolation. This is how Cx reaches C++ features (STL
-containers, `std::string`, `iostream`) without wrapping them.
-
-#### C syntax limits are C-interop problems
-
-Cx has no `L"..."` wide-string literal? — actually it now does.
-But other C constructs Cx does not cover can still be reached
-through `include`:
-
-```
-    include "uconsole.h"
-
-    MessageBoxW(NULL, L("Hello"), L("hi"), 0);
-```
-
-The workaround lives in C, not in Cx. `uconsole.h` provides
-`L()` as a regular function that calls `MultiByteToWideChar`.
-
-#### Inline assembly and builtins
-
-```
-    u32 fast_add(u32 a, u32 b) {
-        u32 result;
-        __raw {
-            __asm__ __volatile__(
-                "addl %%ebx, %%eax"
-                : "=a"(result)
-                : "a"(a), "b"(b));
-        }
-        return result;
-    }
-
-    u32 clz(u32 x) => __builtin_clz(x);
-```
-
-GCC's low-level toolkit is available without wrappers.
+GCC builtins and inline asm work through __raw too.
 
 ### Test blocks
 
-```
     test "arithmetic" {
         check(1 + 1 == 2);
-        check(2 * 3 == 6);
+        check_eq(2 * 3, 6);
     }
 
-    test "vec3" {
-        Vec3 v = .{ x = 1, y = 2, z = 3 };
-        check_eq(v.x, 1);
-        check_not_eq(v.z, 4);
-    }
-```
+Run with cx test (single file or project). check, check_eq,
+check_not_eq, check_near, check_fail are builtins. Test
+blocks are not compiled by cx run — only cx test sees them.
 
-Run them with:
 
-```
-    cx test file.cx    # single file
-    cx test            # project mode (src/main.cx)
-```
+## 3. Where you should NOT use Cx
 
-`check`, `check_eq`, `check_not_eq`, `check_near`, `check_fail`
-are builtins — they expand to `if` blocks that count passes
-and failures. Test blocks are **not compiled** by `cx run` or
-`cx file.cx`; they only exist when `cx test` is invoked.
-`cx test --emit-c` keeps the generated `.c` for inspection.
+This is the honest section. Cx is not production-ready, and
+those three words are doing real work.
 
-### `inline` keyword
+**Don't use Cx if:**
 
-```
-    inline int add(int a, int b) => a + b;
-```
+- **You're shipping a product.** The language is 0.2.3, the
+  feature set is small, and there is no stability guarantee.
+  A breaking change to the generated C would break your
+  build.
 
-Accepted by the parser, **not emitted** to the generated C. Cx
-generates a single translation unit, so C's `inline` — whose
-real role is allowing duplicate definitions across TUs — has
-no meaning here. The keyword is accepted for readability — it 
-signals intent to human readers. Inline decisions are made by 
-the C compiler, which sees the whole single-TU program and can 
-decide better than a keyword can.
+- **You need an ecosystem.** There is no package registry, no
+  official language server. VS Code on Windows has a .cx
+  extension that targets a *different* language but
+  highlights Cx ~85% — good enough for editing, not a
+  substitute for a real LSP.
 
----
+- **You work on a team.** No shared tooling, no linting
+  standard, no CI recipes. Everyone who touches the code
+  has to install dub + ldc2 first.
 
-## 4. What you don't get (yet)
+- **You need to self-host.** Cx is written in D. You need
+  dub + ldc2 to build it. The author's roadmap includes
+  self-hosting eventually, but it isn't there.
 
-### Not self-hosting
+- **You need the standard library to do the work.** std.array,
+  std.stack, std.io. That's roughly it. Bring your own C
+  libraries — that's the point, but it also means Cx alone
+  doesn't get you far.
 
-Cx is written in D. You need `dub` + `ldc2` to build it. The
-author's roadmap includes self-hosting eventually.
+- **You need compile-time loops over types.** __eval handles
+  expressions. No comptime for, no static if chains, no
+  compile-time branching on type properties.
 
-### No closures (by design, not by accident)
+- **You need incremental builds.** The package manager reads
+  cx.json and compiles src/main.cx. No dependency graph, no
+  plugin system.
 
-Covered above. This is a position, not a missing feature.
+**Use Cx if:**
 
-### Macros are define-before-use, same-file only
+- You want to call an arbitrary C library on day one without
+  a wrapper, a generator, or a build script.
+- You want the generated output to be readable C you could
+  have written yourself.
+- You want a small language you can read in an evening —
+  src/frontend/parser/ast.d is ~1200 lines, src/backend/
+  codegen.d is ~1300 lines.
+- You want to be able to fix bugs yourself. The author's own
+  note: "If you find a bug, the fix is usually under 50
+  lines. This is that kind of project."
 
-No cross-module macros. No recursive expansion. Extend
-`src/frontend/comptime.d` if you need those.
 
-### No module-qualified calls
-
-`io.printf(...)` is not supported. `import std.io;` brings
-`printf` into scope directly; to get a prefix, wrap functions
-in a struct — `IO.printf(...)` on a struct static method.
-
-### No `comptime for` / `static if` chains
-
-`__eval` handles expressions. No loops over types, no
-compile-time branching on type properties.
-
-### No build system beyond `cx run`
-
-The PM reads `cx.json` and compiles `src/main.cx`. No
-incremental builds, no plugin system, no dependency graph.
-
-### Small standard library
-
-`std.array`, `std.stack`, `std.io`. That's roughly it. Bring
-your own C libraries.
-
-### Ecosystem
-
-No package registry, no official language server.
-VS Code on Windows has a `.cx` extension that targets a
-different language but highlights Cx ~85% — good enough for
-editing, not a substitute for a real LSP.
-
----
-
-## 5. Rough comparison
+## 4. Rough comparison
 
 Not a shootout. "Which tool for which job".
 
@@ -740,123 +384,87 @@ Cx sits between "plain C with hand-written abstractions" and
 "a real modern language". It's for people who like C's model
 but are tired of writing the same generics 20 times.
 
----
 
-## 6. Getting started
+## 5. Getting started
 
 Prerequisites:
 - MSYS2 UCRT64 (Windows) or a POSIX toolchain
-- `gcc` / `g++` on `PATH`
-- `dub` + `ldc2` to build Cx itself
+- gcc / g++ on PATH
+- dub + ldc2 to build Cx itself
 
 Build Cx:
 
-```
     git clone <your-fork>
     cd cx-dev
     dub build --compiler=ldc2 --build=release --force
     copy cx.exe <your-PATH>
-```
 
 Project workflow:
 
-```
     mkdir testdemo && cd testdemo
     cx init
     cx run
-```
 
 Single file:
 
-```
     cx hello.cx -o hello && hello
-```
 
-Link a library:
+Link a library by flags:
 
-```
     cx demo.cx --opt -o demo \
        --cflags="-I e:/raylib/include -L e:/raylib/lib -l raylib"
-```
 
-Link by name (equivalent to `-l` on the C compiler):
+Link by name (equivalent to -l on the C compiler):
 
-```
     cx demo.cx -L m -L pthread -o demo
-```
 
 Use a config tool:
 
-```
     cx wx_demo.cx --cpp --opt -o demo \
        --cflags="$(wx-config-3.3 --libs --cflags)"
-```
 
 Full option list:
 
-```
     cx -h
     cx -v
-```
 
-See `docs/cx-library-guide.txt` for the long version.
+See docs/cx-library-guide.txt for the long version.
 
----
 
-## 7. Status (as of 2026-10-02)
+## 6. Status and what's next
 
-- **Version**: 0.2.3 (fork of `FernandoTheDev/cx`)
-- **Platforms verified**: Windows 10 x64 (MSYS2 UCRT64);
-  Linux-compatible by construction (emits C99, no
-  platform-specific runtime)
+- **Version**: 0.2.3 (fork of FernandoTheDev/cx)
+- **Platforms verified**: Windows 10 x64 (MSYS2 UCRT64).
+  Linux-compatible by construction: emits C99, no
+  platform-specific runtime.
 - **Toolchain**: LDC 1.40 → D → C99 → gcc 15.2
 - **Language features**: modules, package manager, nested
-  monomorphized generics, macros (AST-level), lambdas
-  (no closures), error unions, `defer`, `target()`,
-  `__eval`, `__sizeof`, `__alignof`, static reflection
-  (`__fieldCount`, `__fieldName`, `__fieldType`,
-  `__fieldGet`, `__unionGet`), `===` value comparison,
-  array literals (`[]` and `{}`) as expressions, wide
-  string literals (`L"..."`), `inline` keyword (accepted,
-  not emitted), type inference sugar (`.{...}`, `.Enum`,
-  `.new()`)
-- **C++ interop**: 5/5 known issues fixed (typedef, restrict,
-  `void*` conversion, string literals, nested designated
-  initializers)
+  monomorphized generics, AST-level macros, lambdas (no
+  closures), error unions, defer, target(), __eval,
+  __sizeof, __alignof, static reflection, === value
+  comparison, array literals as expressions, wide string
+  literals, type inference sugar.
+- **C++ interop**: 5/5 known issues fixed.
 - **Tested libraries**: raylib, wxWidgets, wxJson,
   nlohmann/json, GTK, cfltk, libui, sqlite3, libxlsxwriter,
-  libcurl, zlib, LLVM-C, Win32 SDK
-- **C macro interop**: tested with custom headers
-  (`cmisc.h`), `windows.h`, `assert.h`
-- **Test framework**: `cx test` with `check` / `check_eq` /
-  `check_not_eq` / `check_near` / `check_fail` builtins;
-  single-file and project mode; `--emit-c` keeps the
-  generated C for inspection
+  libcurl, zlib, LLVM-C, Win32 SDK.
+- **C macro interop**: tested with cmisc.h, windows.h,
+  assert.h.
+- **Test framework**: cx test with check / check_eq /
+  check_not_eq / check_near / check_fail builtins.
 
-**Not production-ready.** It's a working tool with a small
-feature set. Use it for small projects, experiments, or as a
-learning vehicle for compiler work. Don't bet a product on it
-yet.
+Where to look next:
 
----
+- examples/ — 70+ programs.
+- cxtests/lang/ — 17 small files, one per language feature.
+- samples/wxWidgets_demo/ — 7 GUI demos, each with a
+  build_*.md recording the exact compile command.
+- samples/features/ — the kitchen-sink integration test.
+- docs/cx-library-guide.txt — how to link any C library.
 
-## 8. What to do next
+**Not production-ready.** Use it for small projects,
+experiments, or as a learning vehicle for compiler work.
+Don't bet a product on it yet.
 
-- `examples/` — 70+ programs.
-- `cxtests/lang/` — 17 small files, one per language feature,
-  each verified working.
-- `samples/wxWidgets_demo/` — 7 GUI demos (json tree,
-  xml tree, image viewer, collapsible panes, secret
-  store), each with a `build_*.md` recording the exact
-  compile command.
-- `samples/features/` — the kitchen-sink integration test:
-  sqlite3 + inline asm + C++ STL + Win32 + error unions +
-  generics + `defer` in a single program.
-- `docs/cx-library-guide.txt` — how to link any C library.
-- `src/frontend/parser/ast.d` — the entire language definition
-  is ~1200 lines. Readable in an evening.
-- `src/backend/codegen.d` — how AST becomes C. ~1300 lines.
-  You can understand the whole compiler in a weekend.
-
-If you find a bug, the fix is usually under 50 lines. This is
-that kind of project.
+If you find a bug, the fix is usually under 50 lines. This
+is that kind of project.
