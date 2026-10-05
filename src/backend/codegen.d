@@ -854,24 +854,34 @@ private:
                 calleeName = ci.val;
             if (calleeName != "")
             {
-                StructDecl sd = resolver.getStruct(typeName);
-                if (sd !is null)
+				StructDecl sd = resolver.getStruct(typeName);
+                bool isFieldCall = false;
+                if (sd is null)
+                {
+                    // typeName is not a Cx-defined struct. Either it
+                    // comes from an included C header (Cx does not
+                    // parse headers), or it is a placeholder. In C,
+                    // obj.field(args) is a call through a function
+                    // pointer stored in the struct. Generate it
+                    // as-is: C semantics, no method mangling.
+                    isFieldCall = true;
+                }
+                else
                 {
                     foreach (VarDecl vd; sd.fields)
+                        if (vd.name == calleeName) { isFieldCall = true; break; }
+                }
+                if (isFieldCall)
+                {
+                    string argList;
+                    for (uint i; i < ce.args.length; i++)
                     {
-                        if (vd.name == calleeName)
-                        {
-                            string argList;
-                            for (uint i; i < ce.args.length; i++)
-                            {
-                                argList ~= compileExpr(ce.args[i]);
-                                if ((i + 1) < ce.args.length)
-                                    argList ~= ", ";
-                            }
-                            return format("%s.%s(%s)",
-                                compileExpr(node.left), calleeName, argList);
-                        }
+                        argList ~= compileExpr(ce.args[i]);
+                        if ((i + 1) < ce.args.length)
+                            argList ~= ", ";
                     }
+                    return format("%s.%s(%s)",
+                        compileExpr(node.left), calleeName, argList);
                 }
             }
         }
