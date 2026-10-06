@@ -42,10 +42,10 @@ class ResolveSymbols
                             if (!(fn.flags & NodeFlags.Static))
                             {
                                 err.error(node.pos,
-                                    format("Empty struct '%s' cannot have instance methods: "
+                                    format("Empty struct '%s' cannot have instance method '%s': "
                                         ~ "C has no zero-size type to instantiate. "
                                         ~ "Mark the methods static, or add a field.",
-                                        s.name));
+                                        s.name,fn.srcName));
                                 goto skipStruct;
                             }
                         }

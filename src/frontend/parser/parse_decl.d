@@ -145,7 +145,10 @@ public:
             p.err.error(name.pos, "You cannot use overloading on a generic function.");
 
         p.vars = vars;
-        return new FnDecl(fnName, args, body, retType, name.pos, flags);
+        
+		FnDecl fn = new FnDecl(fnName, args, body, retType, name.pos, flags);
+        fn.srcName = name.s;
+        return fn;
     }
 
     Node parseStructDecl(Position pos)

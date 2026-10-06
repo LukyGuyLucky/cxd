@@ -520,7 +520,9 @@ class FnArg
 
 class FnDecl : Node
 {
-    string name;
+    string name;      // mangled name: what codegen emits (Utils_max)
+    string srcName;   // name as written in source (max); equal to
+                      // `name` for top-level functions
     FnArg[] args;
     Node[] body;
     ubyte flags;
@@ -529,12 +531,13 @@ class FnDecl : Node
     {
         super(NodeKind.FnDecl, pos);
         this.name = name;
+        this.srcName = name;   // default; parser overrides for methods
         this.args = args;
         this.type_expr = t;
         this.body = body;
         this.flags = flags;
     }
-
+    
     override void print(uint indent)
     {
         string header = format("FnDecl %s ret=%s", name, type_expr);
@@ -558,7 +561,7 @@ class FnDecl : Node
         foreach (a; args)
             argsCopy ~= (a is null ? null : a.dup());
 
-        auto n = new FnDecl(
+		auto n = new FnDecl(
             name,
             argsCopy,
             dupArr(body),
@@ -566,6 +569,7 @@ class FnDecl : Node
             pos,
             flags
         );
+        n.srcName = srcName;
         n.kind = kind;
         return n;
     }
