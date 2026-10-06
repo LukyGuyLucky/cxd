@@ -1,0 +1,13 @@
+include <stdio.h>
+include <windows.h>
+
+void make_window(HWND* out) {
+    *out = NULL;
+}
+
+int main() {
+    HWND hwnd;
+    make_window(&hwnd);
+    printf("out-param channel works\n");
+    return 0;
+}
