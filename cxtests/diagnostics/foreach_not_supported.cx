@@ -1,0 +1,12 @@
+// @expect-errors: 1
+// @expect-first-at: 8:5
+
+include <stdio.h>
+
+int main() {
+    int arr[3] = [1, 2, 3];
+    foreach x; arr {
+        printf("%d\n", x);
+    }
+    return 0;
+}

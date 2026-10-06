@@ -186,19 +186,54 @@ public:
         return new CaseStmt(value, hasVar, body, pos);
     }
 
-    Node parseForEachStmt(Position pos)
+	Node parseForEachStmt(Position pos)
     {
-        Node k, v, value;
-        v = p.parseExpr.parse();
-        if (p.match(TokenKind.Comma))
+        // foreach is not supported in Cx. C has no iterator protocol
+        // and Cx does not add one. The half-implemented version only
+        // worked on structs with an `iter` method, not on arrays --
+        // a misfit. Use an index loop for arrays
+        // (`for (int i = 0; i < n; i++)`), or a pointer loop for
+        // linked structures.
+        p.err.error(pos,
+            "'foreach' is not supported in Cx: C has no iterator " ~
+            "protocol. Use an index loop (`for (int i = 0; i < n; i++)`) " ~
+            "for arrays, or a pointer loop for linked structures.");
+
+		// Consume the whole statement so parsing continues cleanly.
+        // Source shape: foreach [k,] v ; value { body }
+        //
+        // The `;` in the middle is a syntax separator, not a
+        // statement terminator. Skip to and past it, then skip the
+        // iterable expression, then consume the body block.
+        while (!p.isAtEnd() && !p.check(TokenKind.SemiColon))
+            p.advance();
+        if (p.check(TokenKind.SemiColon))
+            p.advance();
+
+        while (!p.isAtEnd()
+               && !p.check(TokenKind.LBrace)
+               && !p.check(TokenKind.SemiColon))
+            p.advance();
+
+        if (p.check(TokenKind.LBrace))
         {
-            k = v;
-            v = p.parseExpr.parse();
+            int depth = 0;
+            while (!p.isAtEnd())
+            {
+                if (p.check(TokenKind.LBrace)) { depth++; p.advance(); }
+                else if (p.check(TokenKind.RBrace))
+                {
+                    depth--;
+                    p.advance();
+                    if (depth == 0) break;
+                }
+                else p.advance();
+            }
         }
-        p.consume(TokenKind.SemiColon, "Expected ';'.");
-        value = p.parseExpr.parse();
-        Node[] body = parseBody();
-        return new ForEachStmt(k, v, value, body, pos);
+        else if (p.check(TokenKind.SemiColon))
+            p.advance();
+
+        return new RawStmt("/* foreach not supported */", pos);
     }
 
     Node parse()
