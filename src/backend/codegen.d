@@ -1,5 +1,6 @@
 ﻿module backend.codegen;
 
+import frontend.c_type_table;
 import backend.cx_builtins;
 import frontend;
 import utils;
@@ -852,9 +853,30 @@ private:
             string calleeName;
             if (IdentExpr ci = cast(IdentExpr) ce.callee)
                 calleeName = ci.val;
-            if (calleeName != "")
+			if (calleeName != "")
             {
-				StructDecl sd = resolver.getStruct(typeName);
+                // C 类型表：.cxt 里明确标了这个字段是函数指针时，
+                // 精确走字段调用，不靠下面的兜底。
+                FieldKind ck = lookup_c_field(typeName, calleeName);
+                if (ck == FieldKind.Unknown && node.left.kind == NodeKind.IdentExpr)
+                {
+                    string varName = (cast(IdentExpr) node.left).val;
+                    ck = lookup_c_field(varName, calleeName);
+                }
+                if (ck == FieldKind.Fn)
+                {
+                    string argList;
+                    for (uint i; i < ce.args.length; i++)
+                    {
+                        argList ~= compileExpr(ce.args[i]);
+                        if ((i + 1) < ce.args.length)
+                            argList ~= ", ";
+                    }
+                    return format("%s.%s(%s)",
+                        compileExpr(node.left), calleeName, argList);
+                }
+
+                                StructDecl sd = resolver.getStruct(typeName);
                 bool isFieldCall = false;
                 if (sd is null)
                 {
