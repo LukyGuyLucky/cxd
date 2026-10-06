@@ -28,7 +28,13 @@ public:
         types["f32"] = new TypeExprNamed("float");
         types["double"] = new TypeExprNamed("double");
         types["f64"] = new TypeExprNamed("double");
-        types["bool"] = new TypeExprNamed("int");
+	
+		// Cx's `bool` maps to C's `bool` (_Bool, 1 byte). Do this
+        // unconditionally, including under --no-header: `bool` must
+        // mean the same thing in every mode. A user who wants a
+        // 4-byte boolean writes `int`, not `bool`.
+        types["bool"] = new TypeExprNamed("bool");
+	
         types["void"] = new TypeExprNamed("void");
         types["cstr"] = new TypeExprPointer(types["char"]);
         types["volatile"] = new TypeExprNamed("volatile");
@@ -61,9 +67,6 @@ public:
             
             types["u64"] = new TypeExprNamed("uint64_t");
             types["uint64_t"] = types["u64"];
-            
-            types["i1"] = new TypeExprNamed("bool");
-            types["bool"] = types["i1"];
             
             types["i0"] = new TypeExprNamed("void");
             types["void"] = types["i0"];

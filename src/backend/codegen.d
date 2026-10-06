@@ -1645,19 +1645,15 @@ static inline void cx_print_stack(void) {
 `;
         }
 
-	if (!isCpp)
-		cxHeader ~= `
-#ifndef __STDBOOL_H    
-   #define true  1
-   #define false 0
-   #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-        // ignore
-   #else
-        #ifndef bool
-           typedef int bool;
-        #endif
-    #endif
-#endif
+		// bool / true / false come from <stdbool.h>, the same way
+        // any C programmer gets them. Cx's `bool` maps to C's
+        // `bool`, which is `_Bool` (1 byte, assignment normalizes
+        // to 0/1). The old fallback typedef'd `int bool`, which
+        // made the generated type 4 bytes and let `bool b = 5`
+        // keep 5. That is a surprise for anyone reading the C.
+        if (!isCpp)
+                cxHeader ~= `
+#include <stdbool.h>
 `;
     }
 
