@@ -24,3 +24,4 @@ target/
 *.zip 
 !docs/*.txt 
 *.7z 
+HANDOFF.md 
