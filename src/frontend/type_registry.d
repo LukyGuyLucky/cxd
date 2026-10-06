@@ -23,6 +23,15 @@ public:
         types["c_long"] = new TypeExprNamed("long");
         types["ulong"] = new TypeExprNamed("unsigned long");
         types["c_ulong"] = new TypeExprNamed("unsigned long");
+		// C standard library opaque types. Cx does not parse
+        // headers, but these names appear verbatim in the generated
+        // C, where gcc recognizes them via include. Registering them
+        // here lets them be used as return types for top-level
+        // functions and variables.
+        types["FILE"] = new TypeExprNamed("FILE");
+        types["wchar_t"] = new TypeExprNamed("wchar_t");
+        types["va_list"] = new TypeExprNamed("va_list");
+        types["time_t"] = new TypeExprNamed("time_t");
         types["size_t"] = new TypeExprNamed("size_t");
         types["float"] = new TypeExprNamed("float");
         types["f32"] = new TypeExprNamed("float");
