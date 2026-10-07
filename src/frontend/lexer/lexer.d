@@ -419,8 +419,22 @@ public:
         ];
     }
 
-    Token[] tokenizer()
+	Token[] tokenizer()
     {
+        // Skip UTF-8 BOM (EF BB BF). C compilers accept BOM-prefixed
+        // source; Cx should too. Without this, the three bytes each
+        // surface as "Unknown char" at 1:1, 1:2, 1:3, with no hint
+        // that they are a byte order mark.
+        if (source.length >= 3
+            && cast(ubyte) source[0] == 0xEF
+            && cast(ubyte) source[1] == 0xBB
+            && cast(ubyte) source[2] == 0xBF)
+        {
+            advance();
+            advance();
+            advance();
+        }
+
         while (!isAtEnd())
         {
             char ch = advance();
