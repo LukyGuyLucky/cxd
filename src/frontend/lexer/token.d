@@ -166,8 +166,18 @@ class Token {
         long l;
         ulong u;
         double d;
-        string s;
     }
+    // String payload for tokens that carry one: String, WideString,
+    // Char, Raw. null for every other token, including symbol tokens
+    // and numeric tokens.
+    //
+    // Kept OUT of the union on purpose:
+    //  - a class field is always null-initialized, so a symbol token's
+    //    `.s` is null instead of leftover GC garbage;
+    //  - the GC does not scan union members, so a `string` inside the
+    //    union could be collected while still referenced.
+    // Putting it back into the union re-introduces both problems.
+    string s;
     // Source text of a numeric literal, exactly as written.
     // Empty for every other token, and for numeric literals that
     // were synthesized rather than read from source.

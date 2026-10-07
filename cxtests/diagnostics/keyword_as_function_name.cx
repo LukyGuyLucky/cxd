@@ -1,0 +1,16 @@
+// @expect-errors: 1
+// @expect-first-at: 16:13
+
+// A Cx keyword used as a function name. `target` is TokenKind.Target,
+// so the parser reads it as a `target(...)` declaration and fails to
+// find the expected identifier.
+//
+// This used to crash with a memory access violation (0xC0000005),
+// because the failed `consume` returned a symbol token whose union
+// field `s` was never initialized and got hashed as a garbage
+// pointer. See `Token.s` in frontend/lexer/token.d.
+//
+// The test pins two things:
+//   - it does not crash
+//   - it reports exactly one error, at 1:13
+void target(){}
