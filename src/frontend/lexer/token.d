@@ -168,6 +168,10 @@ class Token {
         double d;
         string s;
     }
+    // Source text of a numeric literal, exactly as written.
+    // Empty for every other token, and for numeric literals that
+    // were synthesized rather than read from source.
+    string lexeme;
     Position pos;
     this(TokenKind kind, Position pos)
     {
@@ -175,31 +179,35 @@ class Token {
         this.pos = pos;
     }
 
-    static Token tk_unumeric(ulong val, Position pos)
+    static Token tk_unumeric(ulong val, Position pos, string lexeme = "")
     {
         Token t = new Token(TokenKind.UNumeric, pos);
         t.u = val;
+        t.lexeme = lexeme;
         return t;
     }
 
-    static Token tk_numeric(long val, Position pos)
+    static Token tk_numeric(long val, Position pos, string lexeme = "")
     {
         Token t = new Token(TokenKind.Numeric, pos);
         t.l = val;
+        t.lexeme = lexeme;
         return t;
     }
 
-    static Token tk_float(float val, Position pos)
+    static Token tk_float(float val, Position pos, string lexeme = "")
     {
         Token t = new Token(TokenKind.Float, pos);
         t.f = val;
+        t.lexeme = lexeme;
         return t;
     }
 
-    static Token tk_double(double val, Position pos)
+    static Token tk_double(double val, Position pos, string lexeme = "")
     {
         Token t = new Token(TokenKind.Double, pos);
         t.d = val;
+        t.lexeme = lexeme;
         return t;
     }
 

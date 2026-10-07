@@ -187,8 +187,11 @@ class NumericLit : Node
         ulong u;
         long l;
     }
+    // Source text of the literal, exactly as written ("0x10", "1_000").
+    // Empty when the node was synthesized rather than read from source.
+    string lexeme;
 
-    this(bool isLong, long l, Position pos)
+    this(bool isLong, long l, Position pos, string lexeme = "")
     {
         super(NodeKind.NumericLit, pos);
         if (isLong)
@@ -197,6 +200,7 @@ class NumericLit : Node
             this.type_expr = new TypeExprNamed("ulong", pos);
         this.isLong = isLong;
         this.l = l;
+        this.lexeme = lexeme;
     }
 
     override void print(uint indent)
@@ -210,7 +214,7 @@ class NumericLit : Node
     {
         // union: copiamos a representação bruta via 'l'/'u' que compartilham
         // o mesmo armazenamento, então basta copiar um dos dois campos.
-        auto n = new NumericLit(isLong, l, pos);
+        auto n = new NumericLit(isLong, l, pos, lexeme);
         n.u = u; // garante bit-a-bit idêntico independente de isLong
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
@@ -226,12 +230,16 @@ class NumericLit : Node
 class DoubleLit : Node
 {
     double val;
+    // Source text of the literal, exactly as written ("1e10", "2E+8").
+    // Empty when the node was synthesized rather than read from source.
+    string lexeme;
 
-    this(double val, Position pos)
+    this(double val, Position pos, string lexeme = "")
     {
         super(NodeKind.DoubleLit, pos);
         this.type_expr = new TypeExprNamed("double", pos);
         this.val = val;
+        this.lexeme = lexeme;
     }
 
     override void print(uint indent)
@@ -241,7 +249,7 @@ class DoubleLit : Node
 
     override DoubleLit dup()
     {
-        auto n = new DoubleLit(val, pos);
+        auto n = new DoubleLit(val, pos, lexeme);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;
@@ -256,12 +264,16 @@ class DoubleLit : Node
 class FloatLit : Node
 {
     float val;
+    // Source text of the literal, exactly as written ("1.5f", "1e3f").
+    // Empty when the node was synthesized rather than read from source.
+    string lexeme;
 
-    this(float val, Position pos)
+    this(float val, Position pos, string lexeme = "")
     {
         super(NodeKind.FloatLit, pos);
         this.type_expr = new TypeExprNamed("float", pos);
         this.val = val;
+        this.lexeme = lexeme;
     }
 
     override void print(uint indent)
@@ -271,7 +283,7 @@ class FloatLit : Node
 
     override FloatLit dup()
     {
-        auto n = new FloatLit(val, pos);
+        auto n = new FloatLit(val, pos, lexeme);
         n.kind = kind;
         n.type_expr = type_expr is null ? null : type_expr.dup();
         return n;

@@ -526,19 +526,29 @@ private:
     {
         switch (node.kind)
         {
-        case NodeKind.NumericLit:
+		case NodeKind.NumericLit:
+        {
             NumericLit num = cast(NumericLit) node;
+            // If the literal came from source, emit it verbatim.
+            // Otherwise (synthesized by comptime, no source text),
+            // fall back to a plain decimal rendering.
+            if (num.lexeme.length > 0)
+                return num.lexeme;
             if (num.isLong)
                 return to!string(num.l);
             return to!string(num.u);
+        }
 
 		case NodeKind.FloatLit:
         {
-            string s = to!string((cast(FloatLit) node).val);
-            // The value may be an integer (e.g. 67.0f → "67"), which
-            // would print as a C int literal. Add ".0f" so it stays
-            // a float. When the string already has a '.' or an
-            // exponent, append only the 'f' suffix.
+            FloatLit fl = cast(FloatLit) node;
+            // If the literal came from source, emit it verbatim.
+            if (fl.lexeme.length > 0)
+                return fl.lexeme;
+            // Synthesized value (comptime): render it as a C float.
+            // An integer value (e.g. 67.0f → "67") would print as a
+            // C int literal, so add ".0f"; otherwise append 'f'.
+            string s = to!string(fl.val);
             if (!canFind(s, '.') && !canFind(s, 'e') && !canFind(s, 'E'))
                 s ~= ".0f";
             else
@@ -546,11 +556,16 @@ private:
             return s;
         }
 
-        case NodeKind.DoubleLit:
+		case NodeKind.DoubleLit:
         {
-            string s = to!string((cast(DoubleLit) node).val);
-            // Same issue: an integer value prints as "67", which C
-            // treats as int. Add ".0" to keep it a double literal.
+            DoubleLit dl = cast(DoubleLit) node;
+            // If the literal came from source, emit it verbatim.
+            if (dl.lexeme.length > 0)
+                return dl.lexeme;
+            // Synthesized value (comptime): render it as a C double.
+            // An integer value prints as "67", which C treats as int,
+            // so add ".0" to keep it a double literal.
+            string s = to!string(dl.val);
             if (!canFind(s, '.') && !canFind(s, 'e') && !canFind(s, 'E'))
                 s ~= ".0";
             return s;

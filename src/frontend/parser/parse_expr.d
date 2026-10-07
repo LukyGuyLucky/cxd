@@ -123,19 +123,19 @@ public:
                 type = new TypeExprNamed(tk.s, tk.pos);
             return new IdentExpr(tk.s, t is null ? type : *t, tk.pos);
 
-        case TokenKind.Numeric:
+		case TokenKind.Numeric:
         case TokenKind.UNumeric:
             bool isLong = tk.kind == TokenKind.Numeric;
-            NumericLit node = new NumericLit(isLong, isLong ? tk.l : 0L, tk.pos);
+            NumericLit node = new NumericLit(isLong, isLong ? tk.l : 0L, tk.pos, tk.lexeme);
             if (!isLong)
                 node.u = tk.u;
             return node;
 
         case TokenKind.Double:
-            return new DoubleLit(tk.d, tk.pos);
+            return new DoubleLit(tk.d, tk.pos, tk.lexeme);
 
         case TokenKind.Float:
-            return new FloatLit(tk.f, tk.pos);
+            return new FloatLit(tk.f, tk.pos, tk.lexeme);
 
         case TokenKind.Char:
             return new CharLit(to!char(tk.s), tk.pos);

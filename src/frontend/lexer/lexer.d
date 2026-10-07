@@ -208,12 +208,12 @@ private:
             buffer ~= [advance()];
     }
 
-    void pushNumeric(string data, uint base, uint s)
+	void pushNumeric(string data, uint base, uint s, string lexeme = "")
     {
         try
-            pushToken(Token.tk_numeric(to!long(data, base), getPos(s, line)));
+            pushToken(Token.tk_numeric(to!long(data, base), getPos(s, line), lexeme));
         catch (Exception e)
-            pushToken(Token.tk_unumeric(to!ulong(data, base), getPos(s, line)));
+            pushToken(Token.tk_unumeric(to!ulong(data, base), getPos(s, line), lexeme));
     }
 
     void lexId(ref String buffer)
@@ -552,8 +552,15 @@ public:
                 continue;
             }
 
-            if (isNumeric(ch))
+			if (isNumeric(ch))
             {
+                // Absolute byte offset of the first character of this
+                // numeric literal. `ch` was already consumed by the
+                // `advance()` above, so the literal starts one byte
+                // before the current `offset`. Used only to slice the
+                // source text back out; error positions still use
+                // `start_o` (a column offset).
+                uint start_abs = offset - 1;
                 uint start_o = loffset;
 
                 String coe;
@@ -622,12 +629,23 @@ public:
 							continue;
 						}
 
+						// Trailing 'f'/'F' may follow the exponent:
+						// `1e3f` is a float, `1e3` is a double. Without
+						// this, the 'f' is left in the stream and the
+						// parser reports "Expected ';'" at the literal.
+						bool expIsFloat = match('F') || match('f');
+
 						double mantissa = to!double(buffer.data);
 						long   expVal   = to!long(coe.data);
 						double result   = mantissa
 										* pow(10.0, negExp ? -expVal : expVal);
 
-						pushToken(Token.tk_double(result, getPos(start_o, line)));
+						if (expIsFloat)
+							pushToken(Token.tk_float(cast(float) result, getPos(start_o, line),
+								source[start_abs .. offset]));
+						else
+							pushToken(Token.tk_double(result, getPos(start_o, line),
+								source[start_abs .. offset]));
 						continue;
 					}
                 }
@@ -636,24 +654,26 @@ public:
 				
                 if (isFloat)
                 {
-                    pushToken(Token.tk_float(to!float(data), getPos(start_o, line)));
+                    pushToken(Token.tk_float(to!float(data), getPos(start_o, line),
+                        source[start_abs .. offset]));
                     continue;
                 }
 
                 if (isDouble)
                 {
-                    pushToken(Token.tk_double(to!double(data), getPos(start_o, line)));
+                    pushToken(Token.tk_double(to!double(data), getPos(start_o, line),
+                        source[start_abs .. offset]));
                     continue;
                 }
 
-                if (isHex)
-                    pushNumeric(data, 16, start_o);
+				if (isHex)
+                    pushNumeric(data, 16, start_o, source[start_abs .. offset]);
                 else if (isOctal)
-                    pushNumeric(data, 8, start_o);
+                    pushNumeric(data, 8, start_o, source[start_abs .. offset]);
                 else if (isBinary)
-                    pushNumeric(data, 2, start_o);
+                    pushNumeric(data, 2, start_o, source[start_abs .. offset]);
                 else
-                    pushNumeric(data, 10, start_o);
+                    pushNumeric(data, 10, start_o, source[start_abs .. offset]);
 
                 continue;
             }

@@ -3,21 +3,17 @@ include <stdio.h>
 // MANUAL PROBE — not part of `cx test`.
 //
 // Purpose: inspect how float and double literals are emitted into
-// the generated C.
+// the generated C. Cx emits the source text of each literal
+// verbatim; it does not re-format the parsed value.
 //
 // Verify:
 //     cx num_literal_probe.cx --emit-c
 //
 // Expected in main():
-//     float  a = 67.0f;         (was 67 before the fix — int literal)
-//     float  b = 0.1f;          (was 0.1 — double promotion before the fix)
+//     float  a = 67.0f;
+//     float  b = 0.1f;
 //     double d = 3.14159;
-//     double e = 1e+11;         (D to!string output; legal C)
-//
-// Note on `e`: Cx source does not accept scientific notation
-// (`1e-10` in .cx will not parse), but the generated C may contain
-// it because `to!string` chooses the shortest round-trip form.
-// This is fine — it is legal C. See docs/semantics/numeric-literals.md.
+//     double e = 100000000000.0;
 
 int main() {
     float  a = 67.0f;
